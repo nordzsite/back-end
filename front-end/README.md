@@ -1,2 +1,0 @@
-# nordZ-product
-nice
