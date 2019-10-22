@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+    <title>Home</title>
+
+    <!-- /////////////////////////////////////////////////////// -->
+    <link rel="stylesheet" href="../front end/css/icons.css">
+    <link rel="stylesheet" href="../front end/css/materialize.css">
+    <link rel="stylesheet" href="../front end/css/materialize.css">
+    <link rel="stylesheet" href="../front end/css/nord-colours.css">
+    <link rel="stylesheet" href="../front end/css/styles.css">
+    <!-- /////////////////////////////////////////////////////// -->
+</head>
+
+  <body>
+    <div class="fixed-action-btn">
+      <a class="btn-floating btn-large nord-red modal-trigger" href="#post">
+        <i class="large material-icons">mode_edit</i>
+      </a>
+   </div>
+   <div class="modal modal-fixed-footer" id="post">
+     <div class="modal-content">
+        <form>
+          <label>Class</label>
+          <div class="row">
+            <div class="input-field col s6">
+              <input type="text" id="autocomplete-input" class="autocomplete" placeholder="Enter class name">
+            </div>
+            <div class="input-field col s6">
+              <select>
+                <option value="" disabled selected class="disabled">Select a class to post in</option>
+                <option value="1">Chemistry HL</option>
+                <option value="2">Physics HL</option>
+                <option value="3">Mathematics AA HL</option>
+                <option value="4">Spanish Ab HL</option>
+                <option value="5">Language and Literature SL</option>
+                <option value="6">Economics SL</option>
+              </select>
+            </div>
+          </div>
+          <label>Content</label>
+          <div class="row">
+            <div class="input-field col s12">
+              <i class="material-icons prefix">mode_edit</i>
+              <textarea id="icon_prefix2" class="materialize-textarea" placeholder="Enter Post"></textarea>
+              <!-- <label for="icon_prefix2">Enter Post</label> -->
+            </div>
+          </div>
+
+        <div class="row">
+
+          <div class="file-field input-field">
+
+            <a class="red-button btn">
+              <i class="material-icons">attach_file</i>
+              <span>Attach file</span>
+              <input type="file" multiple>
+            </a>
+            <div class="file-path-wrapper">
+              <input class="file-path validate" type="text" placeholder="Upload one or more files">
+            </div>
+          </div>
+        </div>
+        </form>
+
+     </div>
+     <div class="modal-footer">
+       <center>
+         <a href="#" class="btn-flat postbutton waves-effect"><div class="post2">Post</div></a>
+       </center>
+     </div>
+   </div>
+
+
+
+   <nav class="nord-darkblue" role="navigation">
+     <ul id="profileDropdown" class="dropdown-content">
+       <li><a href="profile.html" class="modal-trigger">Profile</a></li>
+       <li><a href="index.html" class="modal-trigger">Log out</a></li>
+     </ul>
+     <div class="nav-wrapper container">
+       <a id="logo-container" href="home.html" class="brand-logo"><img src="../front end/images/cisco.png" height="50px" width="auto" style="padding-top:5px;" /></a>
+       <ul class="right hide-on-med-and-down">
+         <li  class="active"><a href="home.html">Home</a></li>
+         <li><a href="assignments.html">Assignments</a></li>
+         <li><a class="dropdown-trigger" href="#!" data-target="profileDropdown"><i class="material-icons">person arrow_drop_down</i></a></li>
+       </ul>
+
+       <ul id="nav-mobile" class="sidenav">
+         <li  class="active"><a href="home.html">Home</a></li>
+         <li><a href="assignments.html">Assignments</a></li>
+         <li><a href="profile.html" class="modal-trigger">Profile</a></li>
+         <li><a href="logout.html" class="modal-trigger">Log out</a></li>
+       </ul>
+       <a href="#" data-target="nav-mobile" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+     </div>
+   </nav>
+
+
+
+
+
+
+    <div class="container col s12">
+
+      <div class="row">
+        <!-- <div class="user"></div> -->
+        <div class="classes col s2">
+          <br style="font-size: 50%"/>
+          <b>Classes</b>
+          <hr/>
+          <div class="truncate">
+            <div class="class_text">
+              <a href="class.html"><li class="truncate">Chemistry HL</li></a>
+              <a href="class.html"><li class="truncate">Physics HL</li></a>
+              <a href="class.html"><li class="truncate">Mathematics AA HL</li></a>
+              <a href="class.html"><li class="truncate">Spanish Ab HL</li></a>
+              <a href="class.html"><li class="truncate">Language and Literature SL</li></a>
+              <a href="class.html"><li class="truncate">Economics SL</li></a>
+            </div>
+          </div>
+          <br />
+        </div>
+        <div class="col offset-s1 s8">
+          <h2>Posts</h2>
+          <hr />
+          <br />
+        </div>
+        <div class="container col offset-s1 s8">
+          <div class="row">
+            <div class="post">
+              <a href="#" class="assignment-subject">Class</a>
+              <h5>Title</h5>
+              <h7>User</h7>
+              <h6>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</h6>
+              <a href="#"><i class="tiny material-icons">attach_file</i> attached_file.png</a>
+            </div>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- /////////////////////////////////////////////////////// -->
+    <script type="text/javascript" src="../front end/js/angular.min.js"></script>
+    <script type="text/javascript" src="../front end/js/initializing"></script>
+    <script type="text/javascript" src="../front end/js/jquery.js"></script>
+    <script type="text/javascript" src="../front end/js/materialize.js"></script>
+    <script type="text/javascript" src="../front end/js/materialize.min.js"></script>
+    <script type="text/javascript" src="../front end/js/script.js"></script>
+    <!-- /////////////////////////////////////////////////////// -->
+    <script>
+    //////DROPDOWN//////
+    document.addEventListener('DOMContentLoaded', function() {
+      var elems = document.querySelectorAll('.dropdown-trigger');
+      var instances = M.Dropdown.init(elems, options);
+    });
+    $('.dropdown-trigger').dropdown();
+    ///////////////////
+
+
+    //////MODALS///////
+    // document.addEventListener('DOMContentLoaded', function() {
+    //   var elems = document.querySelectorAll('.modal');
+    //   var instances = M.Modal.init(elems, options);
+    // });
+    $(document).ready(function(){
+      $('.modal').modal();
+    });
+    ///////////////////
+
+
+        //////SELECT//////
+          // document.addEventListener('DOMContentLoaded', function() {
+          //   var elems = document.querySelectorAll('select');
+          //   var instances = M.FormSelect.init(elems, options);
+          // });
+          $(document).ready(function(){
+            $('select').formSelect();
+          });
+          $(document).ready(function() {
+          $('select').material_select();
+      });
+        ////////////////////
+
+
+        /////AUTOCOMPLETE/////
+        // document.addEventListener('DOMContentLoaded', function() {
+        //    var elems = document.querySelectorAll('.autocomplete');
+        //    var instances = M.Autocomplete.init(elems, options);
+        //  });
+         $(document).ready(function(){
+           $('input.autocomplete').autocomplete({
+             data: {
+               "Chemistry HL": null,
+               "Physics HL": null,
+               "Mathematics AA HL": null,
+               "Spanish Ab HL": null,
+               "Language and Literature SL": null,
+               "Economics SL": null
+             },
+           });
+         });
+        //////////////////////
+  </script>
+  </body>
+
+
+
+</html>

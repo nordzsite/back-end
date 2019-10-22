@@ -1,0 +1,202 @@
+  html{
+    height: 100%;
+  }
+  .assignment-item{
+    border-radius: 6px;
+    border-width: 4px;
+    border-color: black !important;
+    padding-left: 10px;
+    border: solid;
+    border-color: grey !important;
+    border-width: medium;
+    /* border-radius: 50px !important; */
+    margin-left: 30px !important;
+  }
+
+  .assignment-name{
+    color: black;
+    font-size: 20px;
+    margin-bottom: 0%;
+    margin-top: 0px;
+  }
+
+  .assignment-subject{
+    color: rgba(69,69,69,1);
+    font-size: 15px;
+    margin-bottom: 5%;
+    margin-top: 0px;
+    border-radius: 5px;
+    text-decoration-color: #FDC02D !important;
+    transition: .5s ease;
+  }
+
+  .assignment-subject:hover{
+    transition: .5s ease;
+    text-decoration: underline;
+    color: #722C8A;
+    /* text-decoration-color: #A0DAE5; */
+  }
+
+  .assignment-content{
+    padding: 10px !important;
+  }
+
+  .not-submitted{
+    background-color: #ef5d7a;
+    color: #f48ba0 !important;
+    font-size: 13.5px !important;
+    text-align: center;
+    margin-bottom: 0px;
+    margin-top: 0px;
+    transition: .5s ease;
+    width: 140px !important;
+  }
+
+  /* .submitnow{
+    display: none !important;
+    transition: .5s ease;
+  }
+
+  .notsubmit{
+    transition: .5s ease;
+  }
+.not-submitted:hover .notsubmit{
+  display: none;
+  transition: .5s ease;
+}
+.not-submitted:hover .submitnow{
+  display: block;
+  transition: .5s;
+} */
+
+ .not-submitted:hover{
+   background-color: #003255;
+   color: #A0DAE5 !important;
+ }
+
+/* https://www.schemecolor.com/faded-green.php */
+  .submitted{
+    background-color: #7BC17E !important;
+    color: #b1ffad !important;
+  }
+
+  .submit{
+    font-size: 17.5px;
+    text-align: center;
+    align-self: center;
+    margin-top: 10px;
+  }
+  .due{
+    color: #F28650;
+    font-size: 15px;
+    margin-bottom: 0px;
+    margin-top: 0px;
+    /* text-align: center; */
+  }
+
+  .submit-button{
+    /* background-color: #6d9eebff;
+    padding: 5px;
+    padding-left: 9px;
+    padding-right: 9px;
+    margin-top: 5%;
+    font-size: 25px;
+    width: auto;
+    color: black;
+    border-radius: 4px;
+    text-align: center;
+    margin-left: 29% */
+  }
+
+.classes{
+  border-radius: 10px;
+  border-width: medium;
+  border: solid;
+  border-color: #003255;
+  margin-top: 50px;
+  width: 200px;
+}
+
+.classes b{
+  margin: 10px !important;
+  top: 10px !important;
+}
+
+.class_text{
+    margin: 5px;
+}
+
+.class_text li{
+  padding: 5px;
+  border-radius: 5px;
+  transition: .5s ease;
+  margin-top: 2.5px;
+}
+
+.class_text li:hover{
+  background-color: #003255;
+  color: white;
+}
+
+a{
+  color: #F28650;
+}
+
+.postbutton{
+  width: 100%;
+  background-color: #003255 !important;
+  color: #A0DAE5 !important;
+  font-style: oblique;
+  position: inherit;
+  bottom: 0;
+}
+
+/*
+.input-field{
+  height: 400px !important;
+} */
+
+
+#post{
+  /* height: auto; */
+}
+
+.red-button{
+  color: #003255;
+  background-color: #A0DAE5;
+  transition: .5s ease;
+}
+
+.red_button:hover{
+  background-color: #003255 !important;
+  color: #A0DAE5 !important;
+  transition: .5s ease;
+}
+
+.post{
+  border-color: #003255 !important;
+  border: solid;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.post h5{
+  margin-top: 7.5px !important;
+}
+
+.post .assignment-subject{
+  font-size: 75%;
+}
+
+.user{
+  height: 50px;
+  width: 50px;
+  background-image: url(images/default.jpg);
+  background-size: cover;
+}
+
+.page-footer{
+  padding-bottom: 20px;
+  padding-top: 20px;
+  background: #003255 !important;
+}
