@@ -1,9 +1,0 @@
-INDEX VERSION 1.131
-/Users/Apple/Documents/My Work/Coding projects/cisco/git/back-end/.metadata/.plugins/org.eclipse.jst.jsp.core/jspsearch/2646133353.index
-/Demo/src
-/Users/Apple/Documents/My Work/Coding projects/cisco/git/back-end/.metadata/.plugins/org.eclipse.jst.jsp.core/jspsearch/376492161.index
-/Demo/src
-/Users/Apple/Documents/My Work/Coding projects/cisco/git/back-end/.metadata/.plugins/org.eclipse.jst.jsp.core/jspsearch/2315244615.index
-/Demo/src
-/Users/Apple/Documents/My Work/Coding projects/cisco/git/back-end/.metadata/.plugins/org.eclipse.jst.jsp.core/jspsearch/6312660.index
-/Demo/src
