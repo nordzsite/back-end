@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Home page</title>
+    <script src="/js/jquery.js" charset="utf-8"></script>
+    <script src="/js/events.js" charset="utf-8"></script>
+    <script src="/js/script.js" charset="utf-8"></script>
+    <style media="screen">
+      .user-list-container {
+        border-top:rgb(255, 109, 109) solid 5px;
+      }
+      .user-list-container .user-container {
+        border-bottom: 1px lightgrey solid;
+        display: table-row;
+      }
+      .user-list-container .user-container .image-container img{
+        height:100px;
+        border-radius:5px;
+        width: 100px;
+      }
+      .user-list-container .user-container .image-container,.info {
+        display:table-cell;
+      }
+      .info {
+        vertical-align: top;
+      }
+    </style>
+    <link rel="stylesheet" href="/css/styles.css">
+  </head>
+  <body>
+    <div class="nav">
+      <div class="nav-item">
+        <a href="/" id="sign-up">Sign up</a>
+      </div>
+      <div class="nav-item">
+        <a href="/login" id="log-in">Log in</a>
+      </div>
+    </div>
+    <div class="container">
+      <center>
+        <div class="content-container">
+          <div class="big-title red">
+            Users
+          </div>
+          <div class="clean-margin left-align-text user-list-container red">
+            <div class="clean-padding" id="users">
+              <!-- <div class="user-container ">
+                <div class="image-container">
+                  <img src="s.jpg" alt="">
+                </div>
+                <div class="info clean-padding-small">
+                  <div class="mini-title">
+                    Kabir De Sarkar
+                  </div>
+                  <div class="micro-title grey">
+                    kabirds253
+                  </div>
+                </div>
+              </div> -->
+            </div>
+          </div>
+        </div>
+      </center>
+    </div>
+  </body>
+  <script type="text/javascript">
+      $.ajax({
+        url:"/api/session/get",
+        method:'GET',
+        success:function(response){
+          // console.log(response)
+          $('#sign-up').html('Log out');
+          $('#sign-up').attr("href","/auth/logout");
+          $("#log-in").html("Session");
+          $("#log-in").attr("href","/session");
+        },
+        error:function(err){
+          console.error(err.responseText)
+        }
+      })
+      $.ajax({
+        url:"/api/users/list",
+        type:"POST",
+        data:{amount:5},
+        success:function(data){
+          // console.log(data)
+          let users = $('#users');
+          if (data.length == 0) {
+            let elem = $('<div class="mini-title center-align-text grey">No users</div>');
+            users.append(elem)
+          } else {
+            for(let user of data){
+              let {username} = user;
+              let elem = $(`<div class="user-container ">
+                <div class="image-container">
+                  <img src="/api/users/u/${username}/image" alt="" >
+                </div>
+                <div class="info clean-padding-small">
+                  <div class="mini-title">
+                    ${username}
+                  </div>
+                  <div class="micro-title grey">
+                    User
+                  </div>
+                </div>
+              </div>`);
+              users.append(elem)
+            }
+          }
+
+        }, error:function(data){
+          console.error(data)
+        }
+      })
+  </script>
+</html>

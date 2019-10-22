@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>404 file not found</title>
+    <style media="screen">
+      #path {
+        color:red
+      }
+    </style>
+  </head>
+  <body>
+    <center>
+      <h1>404 file not found</h1>
+      <h4>File path: "<span id="path"></span>" not found</h4>
+    </center>
+    <script type="text/javascript">
+      document.getElementById("path").innerText = window.location.href
+    </script>
+  </body>
+</html>

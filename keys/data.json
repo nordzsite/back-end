@@ -1,0 +1,5 @@
+{
+  "MONGO_URL":"mongodb://localhost",
+  "STD_DB":"main",
+  "STD_COLLECTION":"test"
+}

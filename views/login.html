@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Home page</title>
+    <script src="js/jquery.js" charset="utf-8"></script>
+    <script src="js/events.js" charset="utf-8"></script>
+    <script src="js/script.js" charset="utf-8"></script>
+    <link rel="stylesheet" href="css/styles.css">
+  </head>
+  <body>
+    <div class="nav">
+      <div class="nav-item">
+        <a href="/">Sign up</a>
+      </div>
+    </div>
+    <div class="center-container">
+      <div class="form-container">
+        <div class="form" id="main" action="/auth/login" on-success-redirect="/session" method="POST" on-error='console.error(response)'>
+          <center>
+            <div class="title">
+              Log in!
+            </div>
+            <input type="text" name="username" value="" placeholder="Username">
+            <span class="mini-note">Username is case insensitive</span>
+            <input type="password" name="password" value="" placeholder="Password">
+            <span class="prompt"></span>
+            <br />
+            <button type="submit" name="button">Submit</button>
+          </center>
+        </div>
+      </div>
+    </div>
+    <script type="text/javascript">
+      $('#main').on("success",function(event,response){
+        console.log(response)
+      })
+    </script>
+  </body>
+</html>
