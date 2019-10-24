@@ -21,7 +21,7 @@ const connectMongo = require("connect-mongo");
 const MongoStore = connectMongo(session)
 const mongodb = require("mongodb");
 const {MongoClient} = mongodb;
-
+const {fields} = require("./core/schema")
 
 // Constants
 const MONGO_CONFIG = {
@@ -84,7 +84,7 @@ async function main(MONGO_STORE_CLIENT=null){
     // res.file("views/index.html")
     res.file("public/front-end/html/assignments.html")
   })
-  app.post("/dummy",(req,res) => {
+  app.post("/dummy",fields({"pass":"2+"}),(req,res) => {
     res.send(req.body)
   })
   app.get("/*",(req,res) => {

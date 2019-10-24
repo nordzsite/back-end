@@ -91,11 +91,9 @@ router.post("/login",(req,res) => {
   }
 })
 router.post('/signup', (req,res) => {
-  let {username,password,confirm_password} = req.body;
+  let {username,password} = req.body;
   if (!lib.cleanString(username)) {
     res.status(406).send("Not allowed to use special characters in the username")
-  } else if (confirm_password != password) {
-    res.status(406).send("Password and confirm password have to be the same")
   } else if (username.length < 5 || password.length < 10) {
     res.status(406).send("Username min length: 5 and password min length: 10")
   }else {
