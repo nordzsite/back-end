@@ -2,7 +2,9 @@ const l = console.log;
 const path = require("path")
 
 const Lib = {
-  
+  CONSTANTS:{
+    emailValidationExpression:/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i
+  },
   plugRouters:(routerList,app,prefix) => {
     for(let route in routerList){
       app.use(prefix+route,routerList[route])

@@ -8,8 +8,11 @@ const jwt = require("jsonwebtoken")
 const data = require("../keys/data.json");
 const keys = require("../keys/keys.json");
 const fs = require("fs")
-const {MONGO_URL,STD_DB,STD_COLLECTION} = data;
+const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES} = data;
+const {emailValidationExpression} = lib.CONSTANTS;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
+const Schema = require("../core/schema");
+const {fields} = Schema;
 router.get("/",(req,res) => {
   res.send("Welcome to session API route")
 })
@@ -30,7 +33,7 @@ router.post("/authorize",(req,res) => {
 })
 router.get("/logout",(req,res) => {
   req.session.destroy();
-  res.redirect("/login");
+  res.redirect("/");
 })
 router.post("/change/*",(req,res,next) => {
   if (req.session.user == undefined) {
@@ -90,15 +93,18 @@ router.post("/login",(req,res) => {
     })()
   }
 })
-router.post('/signup', (req,res) => {
-  let {username,password} = req.body;
+router.post('/signup',fields({'username':"5+"},{"password":"10+"},"email","type"), (req,res) => {
+  let {username,password,email,type} = req.body;
   if (!lib.cleanString(username)) {
     res.status(406).send("Not allowed to use special characters in the username")
-  } else if (username.length < 5 || password.length < 10) {
-    res.status(406).send("Username min length: 5 and password min length: 10")
+  } else if (ACCOUNT_TYPES.indexOf(type) == -1) {
+    res.status(406).send("Account type must either be student or teacher");
+  } else if (!emailValidationExpression.test(email)) {
+    res.status(406).send("Invalid email")
   }else {
     (async ()=>{
       username = username.toLowerCase();
+      email = email.toLowerCase();
       let connection = await MongoClient.connect('mongodb://localhost')
       let collection = connection.db(STD_DB).collection(STD_COLLECTION);
       let result = await collection.find({username}).toDocs()
@@ -106,12 +112,15 @@ router.post('/signup', (req,res) => {
       if(!result.isEmpty()) {
         res.status(401).send("User already exists")
       } else {
-        collection.insert({username,password});
+        let result = await collection.insert({username,password,email,type});
+        let id = result.ops[0]._id
         req.session.user = username;
+        req.session.uid = id;
         res.send("Registered")
       }
       connection.close()
     })()
+    // res.send("yeet")
   }
 })
 router.post("/",(req,res) => {

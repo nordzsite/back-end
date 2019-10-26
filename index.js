@@ -84,7 +84,7 @@ async function main(MONGO_STORE_CLIENT=null){
     // res.file("views/index.html")
     res.file("public/front-end/html/assignments.html")
   })
-  app.post("/dummy",fields({"pass":"2+"}),(req,res) => {
+  app.post("/dummy",(req,res) => {
     res.send(req.body)
   })
   app.get("/*",(req,res) => {
