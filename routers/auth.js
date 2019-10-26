@@ -70,10 +70,10 @@ router.post("/change/username",(req,res) => {
   }
 })
 
-router.post("/login",(req,res) => {
+router.post("/login",fields("username","password"),(req,res) => {
   let {username,password} = req.body;
   if (req.session.user != undefined) {
-    res.redirect("/session")
+    res.redirect("/home.html")
   }else if (username.trim() == "" || password.trim() == "") {
     res.status(406).send("Invalid username or password");
   } else {
