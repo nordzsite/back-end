@@ -14,6 +14,40 @@ const Lib = {
   CONSTANTS:{
     emailValidationExpression:/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i
   },
+  /*
+    TODO:
+      - Extend DependencyInjector:
+        - Allow for manual dependency names if arg 'core' = true
+        - Possibly convert 'dependencies' non-static variable into object instead of Array
+  */
+  DependencyInjector:class {
+    constructor(config){
+      let {dependencies} = config;
+      if(!dependencies.every(e=>typeof e =="string")) throw new TypeError("All the dependencies have to be of type string")
+  		else {
+        let packageArray = [];
+        for(let dependency in (config.npmPackage.dependencies || {})) {
+          packageArray.push(dependency)
+        }
+        this.dependencies = [...dependencies,...packageArray]
+      }
+    }
+  	serialize(){
+          let obj = {};
+          let arr = this.dependencies.map(e=>"/"+e)
+          for(let dependency of arr){
+              let importantBit = dependency.match(/(\/.+)$/g)[0].split(/-|_| /g).map((e,index)=>(index>=1)?e[0].toUpperCase()+e.substring(1):e).join('').replace(/\//g,'');
+        			dependency = dependency.substring(1);
+        			obj[importantBit] = require(dependency);
+          }
+      		return obj
+      }
+    init(){
+      let obj = this.serialize();
+      for(let dependency in obj) global[dependency] = obj[dependency]
+    }
+  }
+  ,
   CustomError:function(errname,errmsg){
     let err = new Error(errmsg);
     err.name = errname;
