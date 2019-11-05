@@ -15,7 +15,8 @@ const lib = require("./core/lib");
 const Routers = {
   "main":require("./routers/main"),
   "session":require("./routers/session"),
-  "users":require("./routers/users")
+  "users":require("./routers/users"),
+  "class":require("./routers/class")
 };
 const connectMongo = require("connect-mongo");
 const MongoStore = connectMongo(session)
@@ -29,6 +30,7 @@ const MONGO_CONFIG = {
 }
 const KEYS = require("./keys/keys.json");
 const DATA = require("./keys/data.json");
+const VIEWS = require("./public/front-end/view-map.json")
 const {MONGO_URL,MONGO_MAIN_DB} = DATA;
 l(MONGO_URL)
 const PORT = process.env.PORT || 9000;
@@ -77,13 +79,28 @@ async function main(MONGO_STORE_CLIENT=null){
       res.status(404).file('public/front-end/404.html')
     }
   })
-  app.use(express.static("public/front-end/public"))
-  app.get("/",(req,res) => {
-    // res.send("Welcome to API")
-    // res.file("public/index.html")
-    // res.file("views/index.html")
-    res.file("public/front-end/html/assignments.html")
+  app.get("/private/*",(req,res) => {
+    res.status(404).file('public/front-end/404.html')
   })
+
+
+  //  VIEWS
+  lib.simpleBindViews(app,VIEWS.views.session,(req,viewName,viewPath) => {
+    console.log(req.session.type)
+      if(req.session.uid == undefined) return "nosession.html"
+      else return (typeof viewPath == "object") ? viewPath[req.session.type] : viewPath;
+  },"public/front-end/"+VIEWS['view-directory'])
+  lib.simpleBindViews(app,VIEWS.views['no-session'],(req,viewName,viewPath) => {
+    return viewPath
+  },"public/front-end/"+VIEWS['view-directory'])
+
+  app.use(express.static("public/front-end/public"))
+  // app.get("/",(req,res) => {
+  //   // res.send("Welcome to API")
+  //   // res.file("public/index.html")
+  //   // res.file("views/index.html")
+  //   res.file("public/front-end/public/private/assignments.html")
+  // })
   app.post("/dummy",(req,res) => {
     res.send(req.body)
   })
@@ -98,7 +115,7 @@ async function main(MONGO_STORE_CLIENT=null){
     } else {
       res.status(404)
       l(path)
-      res.file("public/front-end/404.html")
+      res.file("public/front-end/public/private/404.html")
     }
   })
   app.post("/*",(req,res) => {

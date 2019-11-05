@@ -1,8 +1,11 @@
 {
-  "MONGO_URL":"mongodb://localhost",
+  "MONGO_URL":"mongodb://localhost/",
   "STD_DB":"main",
-  "STD_COLLECTION":"test",
-  "MONGO_MAIN_DB":"/main",
+  "STD_COLLECTION":"users",
+  "MONGO_MAIN_DB":"main",
+  "COLLECTIONS":{
+    "class":"classes"
+  },
   "ACCOUNT_TYPES":[
     "teacher",
     "student"

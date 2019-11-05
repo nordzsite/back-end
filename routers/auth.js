@@ -8,7 +8,7 @@ const jwt = require("jsonwebtoken")
 const data = require("../keys/data.json");
 const keys = require("../keys/keys.json");
 const fs = require("fs")
-const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES} = data;
+const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES,COLLECTIONS} = data;
 const {emailValidationExpression} = lib.CONSTANTS;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
 const Schema = require("../core/schema");
@@ -31,9 +31,11 @@ router.post("/authorize",(req,res) => {
     } else res.send(docs)
   })
 })
+
 router.get("/logout",(req,res) => {
   req.session.destroy();
-  res.redirect("/");
+  if(req.query.raw == "true") res.sendStatus(200)
+  else res.redirect("/")
 })
 router.post("/change/*",(req,res,next) => {
   if (req.session.user == undefined) {
@@ -86,6 +88,7 @@ router.post("/login",fields("username","password"),(req,res) => {
         res.status(404).send("Invalid username or password")
       } else {
         req.session.user = username;
+        req.session.type = result[0]['type'];
         req.session.uid = result[0]._id
         // console.log(result[0]._id);
         res.send('OK')
@@ -115,6 +118,7 @@ router.post('/signup',fields({'username':"5+"},{"password":"10+"},"email","type"
         let result = await collection.insert({username,password,email,type});
         let id = result.ops[0]._id
         req.session.user = username;
+        req.session.type = type;
         req.session.uid = id;
         res.send("Registered")
       }
