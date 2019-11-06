@@ -75,7 +75,8 @@ router.post("/change/username",(req,res) => {
 router.post("/login",fields("username","password"),(req,res) => {
   let {username,password} = req.body;
   if (req.session.user != undefined) {
-    res.redirect("/home.html")
+    if(req.query.raw != 'true') res.redirect("/home")
+    else res.send("Already logged in")
   }else if (username.trim() == "" || password.trim() == "") {
     res.status(406).send("Invalid username or password");
   } else {

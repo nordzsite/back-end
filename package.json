@@ -1,26 +1,38 @@
 {
-  "name": "name",
+  "name": "back-end",
   "version": "1.0.0",
-  "description": "",
+  "description": "This is the basic structure of a node api",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "l": "nodemon index --ignore 'public/*' --ignore 'test.js'"
+  "directories": {
+    "doc": "docs"
   },
   "dependencies": {
     "body-parser": "*",
-    "colors": "^1.3.3",
+    "colors": "*",
     "connect-mongo": "*",
     "cookie-parser": "*",
-    "cors": "^2.8.5",
+    "cors": "*",
     "express": "*",
-    "express-busboy": "^7.0.1",
+    "express-busboy": "*",
     "express-session": "*",
-    "is-corrupted-jpeg": "^1.0.2",
+    "is-corrupted-jpeg": "*",
     "jsonwebtoken": "*",
     "mongodb": "*",
-    "multer": "^1.4.2"
+    "morgan": "^1.9.1",
+    "multer": "*"
   },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nordzsite/back-end.git"
+  },
+  "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nordzsite/back-end/issues"
+  },
+  "homepage": "https://github.com/nordzsite/back-end#readme"
 }

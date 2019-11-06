@@ -12,6 +12,7 @@ const jwt = require("jsonwebtoken")
 const multer = require("multer");
 const upload= multer();
 const lib = require("./core/lib");
+const morgan = require('morgan');
 const Routers = {
   "main":require("./routers/main"),
   "session":require("./routers/session"),
@@ -38,7 +39,9 @@ const PORT = process.env.PORT || 9000;
 // Middleware
 app.use(rocket.tools)
 app.use(cors())
-app.use(rocket.logger);
+// app.use(rocket.logger);
+// app.use(express.logger())
+app.use(morgan('combined'))
 app.use(bodyParser.urlencoded({extended:false}))
 app.use(bodyParser.json())
 // app.use(upload.any())
