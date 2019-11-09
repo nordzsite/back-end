@@ -68,7 +68,10 @@ router.post("/change/username",(req,res) => {
         }
       }
       connection.close();
-    }())
+    }()).catch((err) => {
+      res.status(500).send("Internal server error");
+      throw err
+    })
   }
 })
 
@@ -94,7 +97,11 @@ router.post("/login",fields("username","password"),(req,res) => {
         // console.log(result[0]._id);
         res.send('OK')
       }
-    })()
+       connection.close()
+    })().catch((err) => {
+      res.status(500).send("Internal server error");
+      throw err
+    })
   }
 })
 router.post('/signup',fields({'username':"5+"},{"password":"10+"},"email","type"), (req,res) => {
@@ -124,7 +131,10 @@ router.post('/signup',fields({'username':"5+"},{"password":"10+"},"email","type"
         res.send("Registered")
       }
       connection.close()
-    })()
+    })().catch((err) => {
+      res.status(500).send("Internal server error");
+      throw err
+    })
     // res.send("yeet")
   }
 })

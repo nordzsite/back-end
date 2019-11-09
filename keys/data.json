@@ -4,7 +4,8 @@
   "STD_COLLECTION":"users",
   "MONGO_MAIN_DB":"main",
   "COLLECTIONS":{
-    "class":"classes"
+    "class":"classes",
+    "user":"users"
   },
   "ACCOUNT_TYPES":[
     "teacher",

@@ -29,7 +29,7 @@ router.get('/get',(req,res) => {
   if(req.session.user == undefined){
     res.status(403).send("User not logged in")
   } else {
-    let jsonObj = {user:req.session.user,type:req.session.type}
+    let jsonObj = {user:req.session.user,type:req.session.type,id:req.session.uid}
     res.send(jsonObj);
   }
 })

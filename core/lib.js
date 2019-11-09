@@ -14,6 +14,14 @@ const Lib = {
   CONSTANTS:{
     emailValidationExpression:/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i
   },
+  middleware:{
+    allowRoles:(roles) => {
+      return (req,res,next) => {
+        if(!roles.includes(req.session.type)) res.status(403).send(`Only roles "${roles.join(",")}" allowed`);
+        else next()
+      }
+    }
+  },
   /*
     TODO:
       - Extend DependencyInjector:
