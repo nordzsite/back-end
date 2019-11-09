@@ -1,0 +1,3 @@
+[submodule "public/front-end"]
+	path = public/front-end
+	url = https://github.com/nordzsite/front-end.git
