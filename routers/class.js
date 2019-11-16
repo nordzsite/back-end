@@ -10,6 +10,7 @@ const keys = require("../keys/keys.json");
 const fs = require("fs")
 const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES,COLLECTIONS,MONGO_MAIN_DB} = data;
 const {allowRoles} = lib.middleware
+const {handleInternalServerErrors} = lib.functions
 const {emailValidationExpression} = lib.CONSTANTS;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
 const Schema = require("../core/schema");
@@ -49,10 +50,7 @@ router.post("/list/members",fields("classID"),(req,res) => {
     }
     res.json(finalResultArray);
     connection.close();
-  }()).catch((err) => {
-    res.status(500).send("Interal server error");
-    throw err;
-  });
+  }()).catch(handleInternalServerErrors(res));
 })
 router.get("/list/classes",(req,res) => {
   (async function() {
@@ -66,10 +64,7 @@ router.get("/list/classes",(req,res) => {
       }}).toDocs();
       res.send(result);
       connection.close()
-  }()).catch((err) => {
-    res.status(500).send('Internal server error');
-    throw err;
-  })
+  }()).catch(handleInternalServerErrors(res))
 })
 router.post("/disband",allowRoles(['teacher']),fields("classID"),(req,res) => {
   // res.send("nice");
@@ -81,10 +76,7 @@ router.post("/disband",allowRoles(['teacher']),fields("classID"),(req,res) => {
     if(result.result.n == 0) res.status(404).send("Could not disband class, either you don't belong to class, doesn't exist or invalid id")
     else res.send("Class disbanded")
     connection.close();
-  }()).catch((err) => {
-    res.status(500).send("Internal server error");
-    throw err
-  });
+  }()).catch(handleInternalServerErrors(res));
 })
 router.post('/leave',(req,res) => {
   if (req.body.classCode == undefined && req.body.classID == undefined) res.status(406).send("Require at least class code or class ID")
@@ -105,10 +97,7 @@ router.post('/leave',(req,res) => {
         else res.send("You have left class: "+result.name);
       }
       connection.close();
-    }()).catch((err) => {
-      res.status(500).send("Internal server Error");
-      throw err;
-    });
+    }()).catch(handleInternalServerErrors(res));
   }
 })
 router.post('/join',fields('classCode'),(req,res) => {
@@ -134,10 +123,7 @@ router.post('/join',fields('classCode'),(req,res) => {
         res.status(404).send("Invalid code")
       }
       connection.close();
-    }()).catch((err) => {
-      res.status(500).send("Internal server error");
-      throw err
-    })
+    }()).catch(handleInternalServerErrors(res))
   }
 })
 router.post("/create",fields({"className":"4+"}),(req,res) => {
@@ -168,11 +154,21 @@ router.post("/create",fields({"className":"4+"}),(req,res) => {
           name:className
         })
         connection.close()
-    }()).catch((err) => {
-      res.status(500).send("Internal server error");
-      throw err
-    })
+    }()).catch(handleInternalServerErrors(res))
   }
+})
+router.post("/rename",fields({newClassName:"4+"},"classID"),allowRoles(['teacher']),(req,res) => {
+  (async function() {
+    let connection = await MongoClient.connect(MONGO_URL);
+    let {classID,newClassName} = req.body
+    let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+    let queryObject = {_id:new ObjectID(classID)};
+    queryObject[`members.teachers`] = {$in:[req.session.uid]}
+    let result = await collection.updateOne(queryObject,{$set:{name:newClassName}})
+    if (result.result.n == 0) res.status(404).send("Unable to rename class, either not in class or invalid code")
+    else res.send("Successfully renamed class")
+    connection.close()
+  }()).catch(handleInternalServerErrors(res));
 })
 router.get("/*",(req,res) => {
   res.status(404).send("Get oute not found")

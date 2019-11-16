@@ -104,6 +104,21 @@ async function main(MONGO_STORE_CLIENT=null){
   //   // res.file("views/index.html")
   //   res.file("public/front-end/public/private/assignments.html")
   // })
+  // app.get("/class/:id",(req,res) => {
+  //   (async function() {
+  //     let classId = req.params.id;
+  //     let connection = await MongoClient.connect(MONGO_URL);
+  //     let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTION.class);
+  //     queryObject = {_id:new ObjectID(classId)};
+  //     queryObject[`members.${role}s`] = {$in:[req.session.uid]}
+  //     let result = await collection.find(queryObject);
+  //     if (result.isEmpty()) {
+  //       res.file("public/front-end/public/private/404.html")
+  //     } else {
+  //
+  //     }
+  //   }());
+  // })
   app.post("/dummy",(req,res) => {
     res.send(req.body)
   })

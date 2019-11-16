@@ -9,6 +9,7 @@ const data = require("../keys/data.json");
 const keys = require("../keys/keys.json");
 const fs = require("fs")
 const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES,COLLECTIONS} = data;
+const {handleInternalServerErrors} = lib.functions;
 const {emailValidationExpression} = lib.CONSTANTS;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
 const Schema = require("../core/schema");
@@ -68,10 +69,7 @@ router.post("/change/username",(req,res) => {
         }
       }
       connection.close();
-    }()).catch((err) => {
-      res.status(500).send("Internal server error");
-      throw err
-    })
+    }()).catch(handleInternalServerErrors(res))
   }
 })
 
@@ -98,10 +96,7 @@ router.post("/login",fields("username","password"),(req,res) => {
         res.send('OK')
       }
        connection.close()
-    })().catch((err) => {
-      res.status(500).send("Internal server error");
-      throw err
-    })
+    })().catch(handleInternalServerErrors(res))
   }
 })
 router.post('/signup',fields({'username':"5+"},{"password":"10+"},"email","type"), (req,res) => {
@@ -131,10 +126,7 @@ router.post('/signup',fields({'username':"5+"},{"password":"10+"},"email","type"
         res.send("Registered")
       }
       connection.close()
-    })().catch((err) => {
-      res.status(500).send("Internal server error");
-      throw err
-    })
+    })().catch(handleInternalServerErrors(res))
     // res.send("yeet")
   }
 })

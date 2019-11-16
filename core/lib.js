@@ -14,6 +14,14 @@ const Lib = {
   CONSTANTS:{
     emailValidationExpression:/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i
   },
+  functions:{
+    handleInternalServerErrors:function(res){
+      return (err) => {
+        res.status(500).send("Internal server error");
+        console.error(err)
+      }
+    }
+  },
   middleware:{
     allowRoles:(roles) => {
       return (req,res,next) => {

@@ -6,6 +6,9 @@ const l = console.log;
 const fs = require("fs");
 const path = require("path")
 const multer = require("multer")
+const {fields} = lib;
+const {allowRoles} = lib.middleware;
+const {handleInternalServerErrors} = lib.functions;
 const isCorrupted = require("is-corrupted-jpeg")
 const multerStorage = multer.diskStorage({
   destination:function(req,file,cb){

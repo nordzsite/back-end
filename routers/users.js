@@ -7,15 +7,15 @@ const l = console.log;
 const fs = require("fs")
 const jwt = require("jsonwebtoken")
 const {MongoClient} = require("mongodb");
+const {allowRoles} = lib.middleware;
+const {handleInternalServerErrors} = lib.functions;
 const Schema = require('../core/schema');
+const {fields} = Schema;
 const data = require("../keys/data.json");
 const keys = require("../keys/keys.json")
 const {MONGO_URL,STD_DB,STD_COLLECTION} = data;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
 
-const fields = function(){
-  return Schema.verify({required:arguments})
-}
 
 // Schemas
 let schema = {
@@ -78,10 +78,7 @@ router.post("/list",fields("amount"),(req,res,next) => {
         projection:{_id:0,password:0}
       }).skip(start-1).limit(amount).toDocs();
       res.json(result);
-    }()).catch(e=>{
-      res.status(500).send("Internal server error occured")
-      throw e;
-    })
+    }()).catch(handleInternalServerErrors(res))
   }
 })
 router.post("/",(req,res) => {
