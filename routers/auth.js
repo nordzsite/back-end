@@ -83,7 +83,7 @@ router.post("/login",fields("username","password"),(req,res) => {
   } else {
     (async ()=>{
       username = username.toLowerCase()
-      let connection = await MongoClient.connect("mongodb://localhost");
+      let connection = await MongoClient.connect(MONGO_URL);
       let collection = connection.db(STD_DB).collection(STD_COLLECTION);
       let result = await collection.find({username,password}).toDocs();
       if(result.isEmpty()){
@@ -111,7 +111,7 @@ router.post('/signup',fields({'username':"5+"},{"password":"10+"},"email","type"
     (async ()=>{
       username = username.toLowerCase();
       email = email.toLowerCase();
-      let connection = await MongoClient.connect('mongodb://localhost')
+      let connection = await MongoClient.connect(MONGO_URL)
       let collection = connection.db(STD_DB).collection(STD_COLLECTION);
       let result = await collection.find({username}).toDocs()
       // res.send(result.isEmpty());
