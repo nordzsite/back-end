@@ -12,3 +12,6 @@
     "student"
   ]
 }
+
+
+"ONLINE_MONGO_URL, paste this in the MONGO_URL when working online":"mongodb+srv://teminix:minecraftisgood123@api-cluster-bn0og.mongodb.net/"
