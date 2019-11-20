@@ -1,0 +1,19 @@
+
+
+Arrays:
+
+Pushing:
+db.collection.update({query},{$push:{"key.subkey":valueYouWantToPush}})
+
+Pulling/removing:
+db.collection.update({query},{$pull:{"key.subkey":valueYouWantToPull}})
+
+Querying:
+
+Multiple query parameters:
+db.collection.find({key:{$elemMatch:{requiredKey1:requiredValue1,requiredKey2,requiredValue2}}})
+With projection:
+db.collectionl.find(
+  {key:{$elemMatch:{requiredKey1:requiredValue1,requiredKey2,requiredValue2}}},
+  {projection:{key:{$elemMatch:{..conditions..}}}}
+)

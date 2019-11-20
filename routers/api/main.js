@@ -1,19 +1,19 @@
 const l = console.log;
 const express = require('express')
 const router = express.Router();
-const lib = require("../core/lib")
+const lib = require("../../core/lib")
 const {promisify} = require("util")
 const {MongoClient,ObjectID} = require("mongodb");
 const jwt = require("jsonwebtoken")
-const data = require("../keys/data.json");
-const keys = require("../keys/keys.json");
+const data = require("../../keys/data.json");
+const keys = require("../../keys/keys.json");
 const fs = require("fs")
 const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES,COLLECTIONS,MONGO_MAIN_DB} = data;
 const {allowRoles} = lib.middleware
 const {handleInternalServerErrors} = lib.functions
 const {emailValidationExpression} = lib.CONSTANTS;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
-const Schema = require("../core/schema");
+const Schema = require("../../core/schema");
 const {fields} = Schema;
 router.get("/",(req,res) => {
   res.send("Welcome to main API route")

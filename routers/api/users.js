@@ -1,7 +1,7 @@
 const express = require('express')
 const isCorrupted = require("is-corrupted-jpeg")
 const router = express.Router();
-const lib = require("../core/lib")
+const lib = require("../../core/lib")
 const {promisify} = require("util")
 const l = console.log;
 const fs = require("fs")
@@ -9,10 +9,10 @@ const jwt = require("jsonwebtoken")
 const {MongoClient} = require("mongodb");
 const {allowRoles} = lib.middleware;
 const {handleInternalServerErrors} = lib.functions;
-const Schema = require('../core/schema');
+const Schema = require('../../core/schema');
 const {fields} = Schema;
-const data = require("../keys/data.json");
-const keys = require("../keys/keys.json")
+const data = require("../../keys/data.json");
+const keys = require("../../keys/keys.json");
 const {MONGO_URL,STD_DB,STD_COLLECTION} = data;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
 
@@ -29,23 +29,23 @@ let ListSchema = Schema.verify(schema.list)
 router.get("/",(req,res) => {
   res.send("Welcome to users API route")
 })
-router.get("/getAdminAuthToken",(req,res) => {
-  jwt.sign({role:"admin"},JSON_WEBTOKEN_KEY,(err,docs) => {
-    if(err) res.sendStatus(500);
-    else res.json({token:docs})
-  })
-})
+// router.get("/getAdminAuthToken",(req,res) => {
+//   jwt.sign({role:"admin"},JSON_WEBTOKEN_KEY,(err,docs) => {
+//     if(err) res.sendStatus(500);
+//     else res.json({token:docs})
+//   })
+// })
 router.get("/u/:username/image",(req,res) => {
   let {username} = req.params;
-  let searchString = lib.resPath(`../images/users/${username}.jpg`)
+  let searchString = lib.resPath(`../../images/users/${username}.jpg`)
   if(fs.existsSync(searchString)){
     if (isCorrupted(searchString)) {
-      res.sendFile(lib.resPath('../images/default.jpg'))
+      res.sendFile(lib.resPath('../../images/default.jpg'))
     } else {
       res.sendFile(lib.resPath(searchString))
     }
   }
-  else res.sendFile(lib.resPath("../images/default.jpg"))
+  else res.sendFile(lib.resPath("../../images/default.jpg"))
   // res.send(searchString)
 })
 router.post("/list",fields("amount"),(req,res,next) => {

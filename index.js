@@ -14,26 +14,27 @@ const upload= multer();
 const lib = require("./core/lib");
 const morgan = require('morgan');
 const Routers = {
-  "main":require("./routers/main"),
-  "session":require("./routers/session"),
-  "users":require("./routers/users"),
-  "class":require("./routers/class")
+  "auth":require("./routers/auth")
+  // "main":require("./routers/api/main"),
+  // "session":require("./routers/api/session"),
+  // "users":require("./routers/api/users"),
+  // "class":require("./routers/api/class")
 };
 const connectMongo = require("connect-mongo");
 const MongoStore = connectMongo(session)
 const mongodb = require("mongodb");
-const {MongoClient} = mongodb;
+const {MongoClient,ObjectID} = mongodb;
 const {fields} = require("./core/schema")
 
 // Constants
 const MONGO_CONFIG = {
-  useNewUrlParser:true
+  useNewUrlParser:true,
+  useUnifiedTopology: true
 }
 const KEYS = require("./keys/keys.json");
 const DATA = require("./keys/data.json");
 const VIEWS = require("./public/front-end/view-map.json")
-const {MONGO_URL,MONGO_MAIN_DB} = DATA;
-l(MONGO_URL)
+const {MONGO_URL,MONGO_MAIN_DB,COLLECTIONS} = DATA;
 const PORT = process.env.PORT || 9000;
 
 // Middleware
@@ -65,8 +66,8 @@ async function main(MONGO_STORE_CLIENT=null){
     }))
   }
   app.use(bodyParser.text())
-  lib.plugRouters(Routers,app,"/api/") // Plug in the routers
-  app.use("/auth",require("./routers/auth"))
+  lib.plugRouters(Routers,app,"/")
+  lib.bindRoutersToDir("routers/api/",app,'/api/')
   // Routes
   app.get("/*.html",(req,res) => {
     let {path} = req;
@@ -104,21 +105,42 @@ async function main(MONGO_STORE_CLIENT=null){
   //   // res.file("views/index.html")
   //   res.file("public/front-end/public/private/assignments.html")
   // })
-  // app.get("/class/:id",(req,res) => {
-  //   (async function() {
-  //     let classId = req.params.id;
-  //     let connection = await MongoClient.connect(MONGO_URL);
-  //     let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTION.class);
-  //     queryObject = {_id:new ObjectID(classId)};
-  //     queryObject[`members.${role}s`] = {$in:[req.session.uid]}
-  //     let result = await collection.find(queryObject);
-  //     if (result.isEmpty()) {
-  //       res.file("public/front-end/public/private/404.html")
-  //     } else {
-  //
-  //     }
-  //   }());
-  // })
+  app.get("/class/:id",(req,res) => {
+    (async function() {
+      let classId = req.params.id;
+      let connection = await MongoClient.connect(MONGO_URL);
+      let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
+      queryObject = {_id:new ObjectID(classId)};
+      let role = req.session.type;
+      queryObject[`members.${role}s`] = {$in:[req.session.uid]}
+      let result = await collection.find(queryObject).toDocs();
+      if (result.isEmpty()) {
+        res.file("public/front-end/public/private/404.html")
+      } else {
+        fs.readFile("public/front-end/public/private/class.html",async (err,docs) => {
+          if(err) res.status(500).send("Internal server error")
+          else {
+            let record = result[0];
+            let className = record.name;
+            let teacherIDs = record.members.teachers;
+            let teacherNames = [];
+            for(let teacherID of teacherIDs){
+              let username = await userCollection.findOne({_id:new ObjectID(teacherID)});
+              teacherNames.push(username.username)
+            }
+            teacherNames = teacherNames.join(", ");
+            let docString = String(docs.toString());
+            let finalString = lib.simpleApplyTemplate(docString,{
+              "class":className,
+              "teacher":teacherNames
+            })
+            res.type("html").send(finalString)
+          }
+        })
+      }
+    }());
+  })
   app.post("/dummy",(req,res) => {
     res.send(req.body)
   })
@@ -145,7 +167,7 @@ async function main(MONGO_STORE_CLIENT=null){
   })
 }
 
-MongoClient.connect(MONGO_URL,(err,client) => {
+MongoClient.connect(MONGO_URL,MONGO_CONFIG,(err,client) => {
   let ERR_STRING = `
 =================================================
 Running server without MongoDB connection

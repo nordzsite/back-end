@@ -1,7 +1,18 @@
 const l = console.log;
 const path = require("path")
-
+const fs = require('fs')
+const crypto = require('crypto');
 const Lib = {
+  hashString:(str,algorithm='sha1') => crypto.createHash(algorithm).update(str.toString()).digest('hex'),
+  uniqueIdGen:() => `${Lib.hashString(Date.now())}_${Lib.randGen(5)}`,
+  simpleApplyTemplate:(string,object) => {
+    let finalString = string;
+    for(let variable in object){
+      let expression = new RegExp(Lib.escapeRegExp("${"+variable+"}"),"g")
+      finalString = finalString.replace(expression,object[variable]);
+    }
+    return finalString;
+  },
   randGen:function randGen(len) {
     let alphabets = "abcdefghijklmnopqrstuvwxyz";
     let charset = alphabets+alphabets.toUpperCase()+'0123456789';
@@ -23,9 +34,13 @@ const Lib = {
     }
   },
   middleware:{
+    loginRequired:(req,res,next) => {
+      if(typeof req.session.uid == 'undefined') res.status(403).json({message:"Need to be logged in to access resource",code:403})
+      else next()
+    },
     allowRoles:(roles) => {
       return (req,res,next) => {
-        if(!roles.includes(req.session.type)) res.status(403).send(`Only roles "${roles.join(",")}" allowed`);
+        if(!roles.includes(req.session.type)) res.status(403).send({message:`Only roles "${roles.join(",")}" allowed`,code:403});
         else next()
       }
     }
@@ -73,6 +88,13 @@ const Lib = {
     for(let route in routerList){
       app.use(prefix+route,routerList[route])
     }
+  },
+  bindRoutersToDir:(dir,app,prefix) => {
+    let files = fs.readdirSync(dir);
+    let finalRouterArray = files.filter((e) => {
+      return (path.parse(e).ext == ".js")
+    }).map(e=>path.resolve(process.cwd(),`./${dir}${path.parse(e).name}`))
+    for(let route of finalRouterArray) app.use(`${prefix}${path.parse(route).name}`,require(route))
   },
   simpleBindViews:(app,viewObject,callback,viewPath) => {
     if (typeof viewPath == "undefined") throw new Lib.CustomError("ViewError","View path directory needs to be specified")

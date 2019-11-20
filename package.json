@@ -12,6 +12,7 @@
     "connect-mongo": "*",
     "cookie-parser": "*",
     "cors": "*",
+    "crypto": "^1.0.1",
     "express": "*",
     "express-busboy": "*",
     "express-session": "*",
@@ -23,7 +24,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "l":"nodemon --ignore './public' --ignore './docs' --watch './public/front-end/view-map.json' --watch './routers/*'"
+    "l": "nodemon index.js --ignore './public' --ignore './docs' --watch './public/front-end/view-map.json' --watch './routers/*' --watch '*.js'"
   },
   "repository": {
     "type": "git",

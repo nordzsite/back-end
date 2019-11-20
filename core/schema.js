@@ -29,6 +29,7 @@ const Lib = {
             if (req.body[reqKey] == undefined) {
               res.status(406).send("Invalid schema");
               valid=false;
+              break;
             } else if (typeof key[reqKey] == 'string'){
               let range = key[reqKey];
               // TODO: FIX BIG BUG SOMEWHERE HERE
@@ -50,13 +51,15 @@ const Lib = {
               if (range[1] == null) {
                 if(req.body[reqKey].length < range[0]) {
                   res.status(406).send(invalidSchemaString);
-                  valid = false
+                  valid = false;
+                  break;
                 }
               } else {
                 if(req.body[reqKey].length < range[0] || req.body[reqKey].length > range[1]){
                   console.log(range[0])
                   res.status(406).send(invalidSchemaString);
-                  valid = false
+                  valid = false;
+                  break;
                 }
               }
             }
@@ -64,11 +67,13 @@ const Lib = {
               if (key[reqKey].indexOf(req.body[reqKey])) {
                 res.status(406).send(`Invalid schema: Field "${reqKey}" only accepts: \n${key[reqKey].join("\n- ")}`)
                 valid=false;
+                break;
               }
             }
           } else if(req.body[key] == undefined){
             res.status(406).send("Invalid schema");
             valid=false;
+            break;
           }
         }
         valid ? next() : null;

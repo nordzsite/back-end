@@ -15,7 +15,7 @@ const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
 const Schema = require("../core/schema");
 const {fields} = Schema;
 router.get("/",(req,res) => {
-  res.send("Welcome to session API route")
+  res.send("Welcome to auth route")
 })
 router.get('/get',(req,res) => {
   if(req.session.user == undefined){
