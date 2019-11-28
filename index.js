@@ -25,6 +25,8 @@ const MongoStore = connectMongo(session)
 const mongodb = require("mongodb");
 const {MongoClient,ObjectID} = mongodb;
 const {fields} = require("./core/schema")
+const {handleInternalServerErrors} = lib.functions;
+const {loginRequired} = lib.middleware;
 
 // Constants
 const MONGO_CONFIG = {
@@ -68,6 +70,9 @@ async function main(MONGO_STORE_CLIENT=null){
   app.use(bodyParser.text())
   lib.plugRouters(Routers,app,"/")
   lib.bindRoutersToDir("routers/api/",app,'/api/')
+  app.get("/api/*",(req,res) => {
+    res.status(404).send(`API route: '${req.path}' not found`)
+  })
   // Routes
   app.get("/*.html",(req,res) => {
     let {path} = req;
@@ -105,7 +110,54 @@ async function main(MONGO_STORE_CLIENT=null){
   //   // res.file("views/index.html")
   //   res.file("public/front-end/public/private/assignments.html")
   // })
-  app.get("/class/:id",(req,res) => {
+  app.get("/test/fileUpload",(req,res) => {
+    res.file("test/fileUpload.html")
+  })
+  app.get("/post/:id",loginRequired,(req,res) => {
+    (async function() {
+      let {uid,type} = req.session;
+      let postID = req.params.id;
+      let connection = await MongoClient.connect(MONGO_URL);
+      let classCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+      let queryObject = {"posts.id":postID};
+      queryObject[`members.${type}s`] = {$in:[uid]}
+      let result = await classCollection.findOne(queryObject,{
+        projection:{
+          _id:1,
+          name:1,
+          "posts.$":1
+        }
+      });
+      if(result==null) res.status(404).sendFile(lib.resPath('public/front-end/public/private/404.html'))
+      else {
+        let poster = result.posts[0].poster;
+        let userOfPost = await userCollection.findOne({_id:new ObjectID(poster)});
+        let dateCreated = new Date(result.posts[0].dateCreated).getSemiSimpleTime()
+        let classOfPost = result.name;
+        let {content} = result.posts[0];
+        userOfPost = userOfPost.username;
+        result.posts[0].posterName = userOfPost;
+        fs.readFile("public/front-end/public/private/post.html",function(err,docs){
+          if(err) handleInternalServerErrors(res,true)(err)
+          else {
+            let finalString = String(docs.toString());
+            finalString = lib.simpleApplyTemplate(finalString,{
+              class:classOfPost,
+              user:userOfPost,
+              postID:result.posts[0].id,
+              dateCreated
+              ,content,
+              classID:result._id
+            })
+            res.type("html").send(finalString)
+          }
+        })
+      }
+      connection.close();
+    }()).catch(handleInternalServerErrors(res,true));
+  })
+  app.get("/class/:id",loginRequired,(req,res) => {
     (async function() {
       let classId = req.params.id;
       let connection = await MongoClient.connect(MONGO_URL);
@@ -133,7 +185,9 @@ async function main(MONGO_STORE_CLIENT=null){
             let docString = String(docs.toString());
             let finalString = lib.simpleApplyTemplate(docString,{
               "class":className,
-              "teacher":teacherNames
+              "teachers":teacherNames,
+              "classCode":record.code,
+              "classID":record._id
             })
             res.type("html").send(finalString)
           }

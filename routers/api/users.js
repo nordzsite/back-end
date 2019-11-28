@@ -29,12 +29,12 @@ let ListSchema = Schema.verify(schema.list)
 router.get("/",(req,res) => {
   res.send("Welcome to users API route")
 })
-// router.get("/getAdminAuthToken",(req,res) => {
-//   jwt.sign({role:"admin"},JSON_WEBTOKEN_KEY,(err,docs) => {
-//     if(err) res.sendStatus(500);
-//     else res.json({token:docs})
-//   })
-// })
+router.get("/getAdminAuthToken",(req,res) => {
+  jwt.sign({role:"admin"},JSON_WEBTOKEN_KEY,(err,docs) => {
+    if(err) res.sendStatus(500);
+    else res.json({token:docs})
+  })
+})
 router.get("/u/:username/image",(req,res) => {
   let {username} = req.params;
   let searchString = lib.resPath(`../../images/users/${username}.jpg`)

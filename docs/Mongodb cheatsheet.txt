@@ -8,6 +8,8 @@ db.collection.update({query},{$push:{"key.subkey":valueYouWantToPush}})
 Pulling/removing:
 db.collection.update({query},{$pull:{"key.subkey":valueYouWantToPull}})
 
+
+
 Querying:
 
 Multiple query parameters:
@@ -17,3 +19,35 @@ db.collectionl.find(
   {key:{$elemMatch:{requiredKey1:requiredValue1,requiredKey2,requiredValue2}}},
   {projection:{key:{$elemMatch:{..conditions..}}}}
 )
+If contains:
+"key":{$in:[value]}
+
+
+Delete specific document in array:
+{query},
+{requiredkey:{key1:val1,key2:val2}}
+
+
+Updating deepass document:
+db.classes.updateOne(
+  { _id: ObjectId("5dcea6b15e310ca90f21065b") },
+  {
+    $set: {
+      "posts.$[postElem].comments.$[commentElem]": { name: "yo soy boy123" }
+    }
+  },
+  {
+    arrayFilters: [
+      { "postElem.id": "8d988c015782fba779120e867d452bf8f14fb7a2_vkBJT" },
+      { "commentElem.name": "yo soy boy" }
+    ]
+  }
+);
+
+
+Delete array element by index:
+db.lists.update({}, {$unset : {"interests.3" : 1 }})
+db.lists.update({}, {$pull : {"interests" : null}})
+
+nested projection:
+just use fields and then traverse

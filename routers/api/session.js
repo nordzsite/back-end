@@ -43,7 +43,6 @@ router.post('/upload',(req,res,next) => {
         res.status(401).send("Invalid field sent")
       }
     } else if (err) {
-
       res.status(400).send(err.message)
     }
     // console.log(req.file)

@@ -1,10 +1,11 @@
 const l = console.log;
 const path = require("path")
-const fs = require('fs')
+const multer = require("multer");
+const fs = require('fs');
 const crypto = require('crypto');
 const Lib = {
   hashString:(str,algorithm='sha1') => crypto.createHash(algorithm).update(str.toString()).digest('hex'),
-  uniqueIdGen:() => `${Lib.hashString(Date.now())}_${Lib.randGen(5)}`,
+  uniqueIdGen:(len=5) => `${Lib.hashString(Date.now())}_${Lib.randGen(len)}`,
   simpleApplyTemplate:(string,object) => {
     let finalString = string;
     for(let variable in object){
@@ -22,14 +23,37 @@ const Lib = {
     }
     return final
   },
+  root:{
+    setAsMainRoot:function(){
+      global.ROOT = process.cwd()
+    },
+    root:function(loc){
+      return path.resolve(global.ROOT,loc)
+    }
+  },
   CONSTANTS:{
     emailValidationExpression:/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i
   },
   functions:{
-    handleInternalServerErrors:function(res){
+    handleInternalServerErrors:function(res,showError=false){
       return (err) => {
-        res.status(500).send("Internal server error");
+        if(showError) res.status(500).send(err.toString());
+        else res.status(500).send("Internal server error");
         console.error(err)
+      }
+    },
+    handleMulterErrors:function(res,err){
+      if(err instanceof multer.MulterError){
+        if(err.message == "Unexpected field"){
+          res.status(401).send("Invalid field sent")
+        }
+        else {
+          res.status(500).send("Internal server error")
+          console.log(err)
+        }
+      } else {
+        res.status(500).send("Internal server error")
+        console.log(err)
       }
     }
   },
@@ -121,7 +145,7 @@ const Lib = {
     }
      return true
   }
-  ,resPath:loc => path.resolve(__dirname,loc)
+  ,resPath:loc => path.resolve(process.cwd(),loc)
 }
 module.exports = Lib
 const {Cursor} = require("mongodb")
@@ -134,4 +158,37 @@ Cursor.prototype.toDocs = async function(){
 }
 Array.prototype.isEmpty = function(){
   return (this.length==0)
+}
+Array.prototype.lastElem = function(){
+  return this[this.length-1]
+}
+Date.prototype.resolveDate = function(){
+  let date = this.getDate();
+  let lastDigit = date%10;
+  let concatString = ""
+  switch (lastDigit) {
+    case 1:
+      concatString = "st"
+      break;
+    case 2:
+      concatString = "nd"
+      break;
+    case 3:
+      concatString = "rd"
+      break;
+    default:
+      concatString = "th"
+      break
+  }
+  return date+concatString
+}
+Date.prototype.getSemiSimpleTime = function() {
+  return `${this.getSimpleTime()}  ${this.getHours()}:${this.getMinutes()}:${this.getSeconds()}`
+}
+Date.prototype.getSimpleTime = function(){
+  let days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  let months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let day = days[this.getDay()];
+  let month = months[this.getMonth()];
+  return `${day}, ${month} ${this.resolveDate()}, ${this.getFullYear()}`
 }
