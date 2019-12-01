@@ -19,21 +19,21 @@ const {fields} = Schema;
 router.get("/",(req,res) => {
   res.send("Welcome to post API route")
 })
-l(lib.resPath("resources/attachments"));
+// l(lib.resPath("resources/attachments"));
 // l(process.cwd())
 let multerStorage = multer.diskStorage({
   destination:function(req,file,callBack){
     // let loc = lib.resPath("resources/attachments")
     callBack(null,lib.resPath("resources/attachments"))
   },filename:function(req,file,callBack){
-    l(file);
+    // l(file);
     callBack(null, `${lib.uniqueIdGen(15)}.${file.originalname.split('.').lastElem()}`)
   }
 })
 var multerUpload = multer({
   storage:multerStorage,
   fileFilter:function(req,file,cb){
-    l(file);
+    // l(file);
     (async function() {
         let {uid,type} = req.session;
         let {classID} = req.body;
@@ -43,7 +43,7 @@ var multerUpload = multer({
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
           // l("is this calling or not")
-          l(classID)
+          // l(classID)
           cb(null,false)
         } else {
           cb(null,true)
@@ -63,7 +63,7 @@ let editMulterUpload = multer({
         let queryObject = {"posts.id":postID};
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
-          l("is this calling or not")
+          // l("is this calling or not")
           cb(null,false)
         } else {
           cb(null,true)
@@ -125,7 +125,7 @@ router.post('/create',(req,res) => {
                 comments:[],
                 attachments:[]
               }
-              l(req.files)
+              // l(req.files)
               for(let item of req.files){
                 postObject.attachments.push({
                   fileName:item.filename,
@@ -168,7 +168,12 @@ router.post('/delete',fields('postID'),(req,res) => {
         else res.status(404).send("Post was not able to be deleted, or does not exist")
       } else {
         if(req.query.json=='true') res.json({deletedPost:result.value.posts[0],timeStamp:Date.now()})
-        else res.send("Successfully posted")
+        else res.send("Successfully deleted")
+        for(let attachment of result.value.posts[0].attachments){
+          fs.unlink("resources/attachments/"+attachment.fileName,(err) => {
+            if(err) console.error(err)
+          })
+        }
       }
       connection.close();
   }()).catch(handleInternalServerErrors(res));
@@ -177,7 +182,7 @@ router.post('/edit',(req,res) => {
   (async function() {
       let connection = await MongoClient.connect("mongodb://localhost");
       let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
-      l(req.query.postFiles !='true')
+      // l(req.query.postFiles !='true')
       if (req.query.postFiles != 'true') {
         if (req.body.content == undefined || req.body.postID == undefined) {
           res.status(406).send("Invalid schema")
@@ -228,10 +233,10 @@ router.post('/edit',(req,res) => {
             if (typeof removedFiles == 'undefined') {
               removedFiles = []
             } else {
-              removedFiles = (removedFiles instanceof String)? JSON.parse(removedFiles):removedFiles.map(e=>JSON.parse(e))
+              removedFiles = (typeof removedFiles == 'string')? [JSON.parse(removedFiles)]:removedFiles.map(e=>JSON.parse(e))
             }
+            // console.log(removedFiles)
             let pushObject = {attachments:[]}
-            console.log(req.files)
             for(let file of req.files){
               pushObject.attachments.push({
                 fileName:file.filename,
@@ -284,11 +289,16 @@ router.post('/edit',(req,res) => {
               }
             }}).update({
               $push:{
-                "posts.$.attachments":pushObject.attachments
+                "posts.$.attachments":{$each:pushObject.attachments}
               }
             })
             bulk.execute()
-            res.send("I think it worked")
+            for(let removedFile of removedFiles){
+              fs.unlink("resources/attachments/"+removedFile.fileName,(err) => {
+                if(err) console.error(err)
+              })
+            }
+            res.send("Successfully edited post")
             connection.close();
           }
         })

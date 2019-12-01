@@ -95,7 +95,7 @@ async function main(MONGO_STORE_CLIENT=null){
 
   //  VIEWS
   lib.simpleBindViews(app,VIEWS.views.session,(req,viewName,viewPath) => {
-    console.log(req.session.type)
+    // console.log(req.session.type)
       if(req.session.uid == undefined) return "nosession.html"
       else return (typeof viewPath == "object") ? viewPath[req.session.type] : viewPath;
   },"public/front-end/"+VIEWS['view-directory'])
@@ -112,6 +112,29 @@ async function main(MONGO_STORE_CLIENT=null){
   // })
   app.get("/test/fileUpload",(req,res) => {
     res.file("test/fileUpload.html")
+  })
+  app.get("/class/:id/attachment/:attachmentID",(req,res) => {
+    (async function() {
+      let classId = req.params.id;
+      let {attachmentID} = req.params
+      let connection = await MongoClient.connect(MONGO_URL);
+      let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
+      queryObject = {_id:new ObjectID(classId)};
+      let role = req.session.type;
+      queryObject[`members.${role}s`] = {$in:[req.session.uid]}
+      let result = await collection.countDocuments(queryObject);
+      if (result == 0) {
+        res.status(403).sendFile(path.resolve(__dirname,"public/front-end/public/private/403.html"));
+      } else {
+        let finalFilePath = path.resolve(__dirname,"resources/attachments/"+attachmentID);
+        if (!fs.existsSync(finalFilePath)) {
+          res.status(404).sendFile(path.resolve(__dirname,"public/front-end/public/private/404.html"));
+        } else {
+          res.sendFile(finalFilePath);
+        }
+      }
+    }()).catch(handleInternalServerErrors(res));
   })
   app.get("/post/:id",loginRequired,(req,res) => {
     (async function() {
@@ -208,7 +231,7 @@ async function main(MONGO_STORE_CLIENT=null){
       res.send("'.' files are forbidden")
     } else {
       res.status(404)
-      l(path)
+      // l(path)
       res.file("public/front-end/public/private/404.html")
     }
   })
