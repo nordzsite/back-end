@@ -1,6 +1,8 @@
 const fs = require("fs");
 // const dir = __dirname;
-const {exec} = require("child_process")
+const {exec} = require("child_process");
+const lib = require("./lib");
+const path = require("path")
 function dir(){
   return process.cwd()
 }
@@ -8,6 +10,18 @@ let rocket = {
   tools:function tools(req,res,next){
     res.file = function(path){
       res.sendFile(dir()+"/"+path);
+    }
+    res.rocketTemp = function(loc,object){
+      fs.readFile(path.resolve(process.cwd(),loc),(err,docs) => {
+        if(err) {
+          res.status(500).send("Internal server error");
+          console.error(err)
+        } else {
+          let docString = String(docs.toString());
+          let finalDocString = lib.simpleApplyTemplate(docString,object);
+          res.send(finalDocString);
+        }
+      })
     }
     next();
   },

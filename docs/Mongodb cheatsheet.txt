@@ -6,7 +6,7 @@ Pushing:
 db.collection.update({query},{$push:{"key.subkey":valueYouWantToPush}})
 
 Pulling/removing:
-db.collection.update({query},{$pull:{"key.subkey":valueYouWantToPull}})
+db.collection.update({query},{$pull:{"key":{"subkey":valueYouWantToPull}}})
 
 
 

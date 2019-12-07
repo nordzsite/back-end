@@ -3,12 +3,12 @@ const router = express.Router();
 const lib = require("../core/lib")
 const {promisify} = require("util")
 const l = console.log;
-const {MongoClient} = require("mongodb");
+const {MongoClient,ObjectID} = require("mongodb");
 const jwt = require("jsonwebtoken")
 const data = require("../keys/data.json");
 const keys = require("../keys/keys.json");
 const fs = require("fs")
-const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES,COLLECTIONS} = data;
+const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES,COLLECTIONS,MONGO_MAIN_DB} = data;
 const {handleInternalServerErrors} = lib.functions;
 const {emailValidationExpression} = lib.CONSTANTS;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
@@ -72,7 +72,25 @@ router.post("/change/username",(req,res) => {
     }()).catch(handleInternalServerErrors(res))
   }
 })
+router.post("/change/password",fields("oldPassword","newPassword"),(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let {uid} = req.session;
+      let {oldPassword,newPassword} = req.body;
+      l(oldPassword)
+      let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
+      let result = await collection.find({_id:new ObjectID(uid),password:oldPassword}).toDocs();
+      l(result)
+      if (result.isEmpty()) {
+        res.status(403).send("Invalid old password")
+      } else {
+        result = await collection.updateOne({_id:new ObjectID(uid)},{$set:{password:newPassword}});
+        res.send("Password changed successfully")
+      }
 
+      connection.close();
+  }());
+})
 router.post("/login",fields("username","password"),(req,res) => {
   let {username,password} = req.body;
   if (req.session.user != undefined) {

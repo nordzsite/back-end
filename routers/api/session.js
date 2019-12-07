@@ -12,10 +12,10 @@ const {handleInternalServerErrors} = lib.functions;
 const isCorrupted = require("is-corrupted-jpeg")
 const multerStorage = multer.diskStorage({
   destination:function(req,file,cb){
-    cb(null,lib.resPath("../../images/users"));
+    cb(null,path.resolve(__dirname,"../../resources/images/users/"));
   },
   filename:function(req,file,cb){
-    cb(null,req.session.user+'.jpg');
+    cb(null,req.session.uid+'.jpg');
   }
 })
 const multerUploader = multer({storage:multerStorage
@@ -54,20 +54,20 @@ router.post('/upload',(req,res,next) => {
   })
 })
 router.get("/image",(req,res) => {
-  let {user} = req.session;
-  let searchString = `../../images/users/${user}.jpg`;
+  let {uid} = req.session;
+  let searchString = `../../resources/images/users/${uid}.jpg`;
   let finalSearchString = path.resolve(__dirname,searchString);
   let truth = fs.existsSync(finalSearchString);
   if(truth){
     // res.file(`../../images/users/${user}.jpg`)
     // res.sendFile(finalSearchString)
     if(isCorrupted(finalSearchString)){
-      res.sendFile(lib.resPath("../../images/default.jpg"))
+      res.sendFile(path.resolve(__dirname,'../../public/front-end/public/images/default.jpg'))
     } else {
       res.sendFile(finalSearchString)
     }
   } else {
-    res.sendFile(path.resolve(__dirname,`../../images/default.jpg`))
+    res.sendFile(path.resolve(__dirname,`../../public/front-end/public/images/default.jpg`))
   }
 })
 router.post("/",(req,res) => {

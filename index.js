@@ -26,7 +26,7 @@ const mongodb = require("mongodb");
 const {MongoClient,ObjectID} = mongodb;
 const {fields} = require("./core/schema")
 const {handleInternalServerErrors} = lib.functions;
-const {loginRequired} = lib.middleware;
+const {loginRequired,loginRequired403} = lib.middleware;
 
 // Constants
 const MONGO_CONFIG = {
@@ -85,14 +85,28 @@ async function main(MONGO_STORE_CLIENT=null){
         else res.type('html').send(docs.toString())
       })
     } else {
-      res.status(404).file('public/front-end/404.html')
+      res.status(404).file('public/front-end/public/private/404.html')
     }
   })
   app.get("/private/*",(req,res) => {
-    res.status(404).file('public/front-end/404.html')
+    res.status(404).file('public/front-end/public/private/404.html')
   })
 
 
+  app.get("/profile",loginRequired403,(req,res) => {
+    (async function() {
+        let connection = await MongoClient.connect(MONGO_URL);
+        let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
+        let {uid} = req.session;
+        let result = await collection.findOne({_id:new ObjectID(uid)});
+        console.log(result)
+        res.rocketTemp("public/front-end/public/private/profile.html",{
+          username:result.username
+        });
+        connection.close()
+    }());
+    // res.sendFile(path.resolve(__dirname,"public/front-end/public/private/profile.html"))
+  })
   //  VIEWS
   lib.simpleBindViews(app,VIEWS.views.session,(req,viewName,viewPath) => {
     // console.log(req.session.type)
@@ -113,6 +127,7 @@ async function main(MONGO_STORE_CLIENT=null){
   app.get("/test/fileUpload",(req,res) => {
     res.file("test/fileUpload.html")
   })
+
   app.get("/class/:id/attachment/:attachmentID",(req,res) => {
     (async function() {
       let classId = req.params.id;
@@ -135,6 +150,19 @@ async function main(MONGO_STORE_CLIENT=null){
         }
       }
     }()).catch(handleInternalServerErrors(res));
+  })
+  app.get("/user/:id",(req,res) => {
+    (async function() {
+        let {id} = req.params;
+        let connection = await MongoClient.connect(MONGO_URL);
+        let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+        let result = await collection.findOne({_id:new ObjectID(id)})
+        res.rocketTemp("public/front-end/public/private/user.html",{
+          userID:id,
+          username:result.username
+        })
+        connection.close()
+    }());
   })
   app.get("/post/:id",loginRequired,(req,res) => {
     (async function() {
@@ -184,6 +212,7 @@ async function main(MONGO_STORE_CLIENT=null){
     (async function() {
       let classId = req.params.id;
       let connection = await MongoClient.connect(MONGO_URL);
+      console.log(connection);
       let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
       let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
       queryObject = {_id:new ObjectID(classId)};
@@ -192,6 +221,7 @@ async function main(MONGO_STORE_CLIENT=null){
       let result = await collection.find(queryObject).toDocs();
       if (result.isEmpty()) {
         res.file("public/front-end/public/private/404.html")
+        connection.close()
       } else {
         fs.readFile("public/front-end/public/private/class.html",async (err,docs) => {
           if(err) res.status(500).send("Internal server error")
@@ -214,8 +244,10 @@ async function main(MONGO_STORE_CLIENT=null){
             })
             res.type("html").send(finalString)
           }
+          connection.close()
         })
       }
+
     }());
   })
   app.post("/dummy",(req,res) => {

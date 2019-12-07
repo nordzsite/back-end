@@ -57,10 +57,18 @@ const Lib = {
       }
     }
   },
+  bindLogging(boolean){
+    return boolean ? console.log : function(){}
+  },
   middleware:{
     loginRequired:(req,res,next) => {
       if(typeof req.session.uid == 'undefined') res.status(403).json({message:"Need to be logged in to access resource",code:403})
       else next()
+    },
+    loginRequired403:(req,res,next) => {
+      if(typeof req.session.uid == 'undefined') res.status(403).sendFile(path.resolve(__dirname,"../public/front-end/public/private/403.html"))
+      else next()
+
     },
     allowRoles:(roles) => {
       return (req,res,next) => {
@@ -154,6 +162,7 @@ Cursor.prototype.toDocs = async function(){
   while(await this.hasNext()){
     array.push(await this.next())
   }
+  this.close()
   return array;
 }
 Array.prototype.isEmpty = function(){

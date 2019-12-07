@@ -31,9 +31,9 @@ router.post("/*",(req,res,next) => {
 router.get("/",(req,res) => {
   res.send("Yo soy Bhagwan.")
 })
-router.post("/list/members",fields("classID"),(req,res) => {
+router.get("/:classID/list/members",(req,res) => {
   (async function() {
-    let {classID} = req.body;
+    let {classID} = req.params;
     let role = req.session.type;
     let queryObject = {_id:new ObjectID(classID)};
     queryObject[`members.${role}s`] = {$in:[req.session.uid]}
