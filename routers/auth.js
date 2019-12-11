@@ -72,6 +72,32 @@ router.post("/change/username",(req,res) => {
     }()).catch(handleInternalServerErrors(res))
   }
 })
+router.post("/change/email",(req,res) => {
+  // res.status(400).send("Ha");
+  let {email,password} = req.body;
+  let {user,uid} = req.session;
+  console.log(user)
+  if(email.length < 5){
+    res.status(406).send("Email must be at least 5 characters");
+  } else {
+    (async function(){
+      let connection = await MongoClient.connect(MONGO_URL);
+      let collection = connection.db(STD_DB).collection(COLLECTIONS.user);
+      let result = await collection.updateOne({_id:new ObjectID(uid),password:password},{$set:{email}})
+      if (result.result.nModified == 0) {
+        res.status(403).send("Invalid password");
+      } else {
+        res.send("ok");
+        if(fs.existsSync(lib.resPath("../images/users/"+user+".jpg"))){
+          fs.rename(lib.resPath("../images/users/"+user+".jpg"),lib.resPath("../images/users/"+username+".jpg"),function(err){
+            if(err) console.error(err);
+          })
+        }
+      }
+      connection.close();
+    }()).catch(handleInternalServerErrors(res))
+  }
+})
 router.post("/change/password",fields("oldPassword","newPassword"),(req,res) => {
   (async function() {
       let connection = await MongoClient.connect(MONGO_URL);

@@ -74,20 +74,20 @@ async function main(MONGO_STORE_CLIENT=null){
     res.status(404).send(`API route: '${req.path}' not found`)
   })
   // Routes
-  app.get("/*.html",(req,res) => {
-    let {path} = req;
-    if (fs.existsSync("public/front-end/public"+path)) {
-      fs.readFile("public/front-end/public"+path,(err,docs) => {
-        if (err) res.status(500).send("Some error occured");
-        // res.type('html').send(docs.toString())
-        docs = docs.toString();
-        if (/^((.*?)<!--(.*?)~SessionRequired~(.*?)-->)/g.test(docs) && req.session.uid == undefined) res.file("public/front-end/nosession.html")
-        else res.type('html').send(docs.toString())
-      })
-    } else {
-      res.status(404).file('public/front-end/public/private/404.html')
-    }
-  })
+  // app.get("/*.html",(req,res) => {
+  //   let {path} = req;
+  //   if (fs.existsSync("public/front-end/public"+path)) {
+  //     fs.readFile("public/front-end/public"+path,(err,docs) => {
+  //       if (err) res.status(500).send("Some error occured");
+  //       // res.type('html').send(docs.toString())
+  //       docs = docs.toString();
+  //       if (/^((.*?)<!--(.*?)~SessionRequired~(.*?)-->)/g.test(docs) && req.session.uid == undefined) res.file("public/front-end/nosession.html")
+  //       else res.type('html').send(docs.toString())
+  //     })
+  //   } else {
+  //     res.status(404).file('public/front-end/public/private/404.html')
+  //   }
+  // })
   app.get("/private/*",(req,res) => {
     res.status(404).file('public/front-end/public/private/404.html')
   })
@@ -101,7 +101,8 @@ async function main(MONGO_STORE_CLIENT=null){
         let result = await collection.findOne({_id:new ObjectID(uid)});
         console.log(result)
         res.rocketTemp("public/front-end/public/private/profile.html",{
-          username:result.username
+          username:result.username,
+          email:result.email
         });
         connection.close()
     }());
@@ -116,7 +117,21 @@ async function main(MONGO_STORE_CLIENT=null){
   lib.simpleBindViews(app,VIEWS.views['no-session'],(req,viewName,viewPath) => {
     return viewPath
   },"public/front-end/"+VIEWS['view-directory'])
-
+  //
+  // app.get("/test/*",(req,res) => {
+  //   let loc = req.params[0];
+  //   loc = `test/${loc}`
+  //   console.log("d\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nd")
+  //   let finalFilePath = path.resolve(__dirname,loc);
+  //   if (!fs.existsSync(finalFilePath)) {
+  //     console.log(finalFilePath.blue.bold)
+  //     res.status(404).sendFile(path.resolve(__dirname,'public/front-end/public/private/404.html'));
+  //   } else {
+  //     res.sendFile(finalFilePath)
+  //   }
+  //   res.send('k')
+  // })
+  app.use('/test',express.static("test"))
   app.use(express.static("public/front-end/public"))
   // app.get("/",(req,res) => {
   //   // res.send("Welcome to API")

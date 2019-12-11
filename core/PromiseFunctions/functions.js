@@ -43,7 +43,7 @@ const Lib = {
 //   console.log(doc)
 // })
 if(process.argv.indexOf("--run-write-notif") != -1) {
-  Lib.mongo.writeNotif(MongoClient,"mongodb://localhost","main","users","5de5232019a3c498011bdaa3","This is a test notification please work").then((res) => {
+  Lib.mongo.writeNotif(MongoClient,"mongodb://localhost","main","users","5db48a20b7d143b4a8b6fcdb","This is a test notification please work").then((res) => {
     console.log(res.result);
     process.exit(0)
   }).catch((err) => {

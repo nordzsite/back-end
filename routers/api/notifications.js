@@ -21,12 +21,12 @@ const {fields} = Schema;
 router.get("/",(req,res) => {
   res.send("Welcome to main API route")
 })
-router.get("/markRead/:id",loginRequired,(req,res) => {
+router.post("/markRead",loginRequired,fields("id"),(req,res) => {
   (async function() {
       let connection = await MongoClient.connect(MONGO_URL);
       let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
       let {uid} = req.session;
-      let {id} = req.params;
+      let {id} = req.body;
       let result = await collection.updateOne({_id:new ObjectID(uid),notifications:{
         $elemMatch:{
           id:id
@@ -68,6 +68,18 @@ router.get("/markRead/:id",loginRequired,(req,res) => {
       // res.send("sdfsdf")
       connection.close()
   }()).catch(handleInternalServerErrors(res));
+})
+router.get("/getAll",loginRequired,(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
+      let {uid} = req.session;
+      let result = await collection.findOne({_id:new ObjectID(uid)},{projection:{notifications:1}});
+      let finalResultArray = [];
+      for(let notification of result.notifications) finalResultArray.push(notification);
+      res.json(finalResultArray);
+      connection.close();
+  }());
 })
 router.post("/",(req,res) => {
   res.send("Welcome to notification  post route")
