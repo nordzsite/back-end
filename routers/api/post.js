@@ -13,6 +13,8 @@ const {allowRoles,loginRequired} = lib.middleware
 const {handleInternalServerErrors,handleMulterErrors} = lib.functions
 const {emailValidationExpression} = lib.CONSTANTS;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN;
+const PromiseFunctions = require("../../core/PromiseFunctions/functions");
+const {writeToClassGroup,writeNotif} = PromiseFunctions.mongo
 const multer = require("multer");
 const Schema = require("../../core/schema");
 const {fields} = Schema;
@@ -114,10 +116,13 @@ router.post('/create',(req,res) => {
             else {
               let {classID,content} = req.body
               let queryObject = {_id:new ObjectID(classID)};
+              let className = await collection.findOne({_id:new ObjectID(classID)})
+              className = className.name
               queryObject[`members.${type}s`] = {$in:[uid]};
               let currentTime = Date.now()
+              let postID = lib.uniqueIdGen()
               let postObject = {
-                id:lib.uniqueIdGen(),
+                id:postID,
                 content:content,
                 dateCreated:currentTime,
                 lastModified:currentTime,
@@ -132,14 +137,26 @@ router.post('/create',(req,res) => {
                   originalName:item.originalname
                 });
               }
+
               let result = await collection.updateOne(queryObject,{$push:{posts:postObject}});
               if (result.result.n == 0) res.status(404).send("Unable to write post, either class does not exist or you're not in the class")
               else {
                 if (req.query.json == 'true') res.json({post:postObject})
                 else res.send("Successfully posted to class")
               }
+              if(type == 'teacher') {
+                writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${uid}</b> posted to <b>${className}</b>`,postID,content.substr(0,40)+"...",uid,"post")
+                .then((data) => {
+                  console.log(data)
+                  connection.close()
+                }).catch((err) => {
+                  connection.close()
+                  console.error(err)
+                })
+              } else {
+                connection.close()
+              }
             }
-            connection.close()
           }
         })
       }
@@ -366,7 +383,8 @@ router.get("/get/:id",(req,res) => {
         userOfComment = userOfComment.username;
         comment.commenterName = userOfComment;
       }
-      res.json(postResult)
+      res.json(postResult);
+      connection.close()
     }
   }()).catch(handleInternalServerErrors(res,true));
 })

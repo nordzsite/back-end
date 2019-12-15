@@ -55,9 +55,9 @@ const Lib = {
         res.status(500).send("Internal server error")
         console.log(err)
       }
-    }
+    },
   },
-  bindLogging(boolean){
+  bindLogging:function(boolean){
     return boolean ? console.log : function(){}
   },
   middleware:{

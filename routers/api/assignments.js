@@ -8,11 +8,10 @@ const jwt = require("jsonwebtoken")
 const data = require("../../keys/data.json");
 const path = require("path")
 const PromiseFunctions = require("../../core/PromiseFunctions/functions")
-const {writeNotif, getAllPostsByUserId} = PromiseFunctions.mongo;
+const {getAllPostsByUserId} = PromiseFunctions.mongo;
 const keys = require("../../keys/keys.json");
 const fs = require("fs");
 const nodemailer = require("nodemailer");
-
 let transporter = nodemailer.createTransport({
   service:'Gmail',
   auth:
@@ -25,6 +24,7 @@ const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES,COLLECTIONS,MONGO_MAIN_DB} 
 const {allowRoles,loginRequired} = lib.middleware
 const {handleInternalServerErrors} = lib.functions
 const {emailValidationExpression} = lib.CONSTANTS;
+const {writeToClassGroup,writeNotif} = PromiseFunctions.mongo
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN
 const Schema = require("../../core/schema");
 const {fields} = Schema;
@@ -84,6 +84,26 @@ let editMulterUpload = multer({
     }())
   }
 })
+router.post("/get",fields('assignmentID'),(req,res) => {
+  (async function() {
+    let connection = await MongoClient.connect(MONGO_URL);
+    let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+    let {uid,type} = req.session;
+    let {assignmentID} = req.body;
+    l(assignmentID)
+    let queryObject = {"assignments.id":assignmentID};
+    queryObject[`members.${type}s`] = {$in:[uid]}
+    let result = await collection.findOne(queryObject,{
+    })
+    let finalResult = {};
+    if (result == null) res.status(500).send("Could not find assignment")
+    else {
+      for(let assignment of result.assignments) if(assignment.id == assignmentID) finalResult = assignment
+      res.json(finalResult)
+    }
+    connection.close();
+  }()).catch(handleInternalServerErrors(res));
+})
 router.post("/list",fields("classID"),(req,res) => {
   (async function() {
     let connection = await MongoClient.connect(MONGO_URL);
@@ -128,7 +148,7 @@ router.get("/list/all",loginRequired,(req,res) => {
     connection.close();
   }()).catch(handleInternalServerErrors(res));
 })
-router.post("/create",allowRoles(["teacher"]),(req,res) => {
+router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
   (async function() {
     let connection = await MongoClient.connect(MONGO_URL);
     let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
@@ -141,14 +161,16 @@ router.post("/create",allowRoles(["teacher"]),(req,res) => {
           if(req.body.dueDate == undefined || req.body.title == undefined || req.body.content == undefined || req.body.classID == undefined ) res.status(406).send("Invalid schema")
           if(Date.now() > Number(req.body.dueDate)) res.status(406).send("Invalid due date")
           else {
-          let {uid,type} = req.session;
+          let {uid,type,user} = req.session;
           let {classID,content,title,dueDate} = req.body;
           let queryObject = {_id:new ObjectID(classID)};
+          let className = (await collection.findOne({_id:new ObjectID(classID)},{projection:{name:1}})).name
           let attachments = [];
           for(let file of req.files) attachments.push({fileName:file.filename,originalName:file.originalname})
           queryObject[`members.${type}s`] = {$in:[uid]};
+          assignmentID = lib.uniqueIdGen()
           let pushObject = {
-            id:lib.uniqueIdGen(),
+            id:assignmentID,
             dueDate,
             content,
             title,
@@ -165,22 +187,31 @@ router.post("/create",allowRoles(["teacher"]),(req,res) => {
               let userObj = await userCollection.findOne({_id:new ObjectID(user)})
               mailingList.push(userObj.email)
             }
-            transporter.sendMail({
-              from:'"Test acc 123" <kabirdesarkar2016@gmail.com>',
-              to: mailingList,
-              subject:"Test mail being sent",
-              html:"<h1>Hello there</h1>, an assignment named: "+title+" was made",
-              text:"There has been an assignment named " + title
-            },(err,info) => {
-              if (err) {
-                console.error(err)
-              } else {
-                console.log(info)
-              }
-            })
+            // transporter.sendMail({
+            //   from:'"Test acc 123" <kabirdesarkar2016@gmail.com>',
+            //   to: mailingList,
+            //   subject:"Test mail being sent",
+            //   html:"<h1>Hello there</h1>, an assignment named: "+title+" was made",
+            //   text:"There has been an assignment named " + title
+            // },(err,info) => {
+            //   if (err) {
+            //     console.error(err)
+            //   } else {
+            //     console.log("Successfully sent mail")
+            //   }
+            // })
             res.send("Successfully created assignment, list of receipients to receive email = "+mailingList.join(', '));
+            if(req.query.noNotif != "true"){
+              writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${uid}</b> posted an <b>assignment</b> to <b>${className}</b>`,assignmentID,content,uid)
+              .then((data) => {
+                console.log(data)
+              }).catch((err) => {
+                throw err
+              })
+            }
           }
         }
+
       }})
     } else {
     if(req.body.dueDate == undefined || req.body.title == undefined ||req.body.content == undefined ||req.body.classID == undefined ) res.status(406).send("Invalid schema")
@@ -218,7 +249,80 @@ router.post("/create",allowRoles(["teacher"]),(req,res) => {
   }
 }()).catch(handleInternalServerErrors(res,true));
 })
-router.post("/delete",allowRoles(["teacher"]),fields("id"),(req,res) => {
+router.post("/edit",loginRequired,allowRoles(['teacher']),(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+      if (req.query.fileUpload == "true") {
+        editMulterUpload.array('additionalFiles')(req,res,async function(err){
+          if (err) {
+            handleMulterErrors(res)
+          } else {
+            if(req.body.dueDate == undefined || req.body.title == undefined || req.body.content == undefined || req.body.assignmentID == undefined) res.status(406).send("Invalid schema")
+            else {
+              let {dueDate,title,content,assignmentID} = req.body;
+              let {uid, type} = req.session;
+              let removedFiles = req.body.removedFiles;
+              if (typeof removedFiles == 'undefined') removedFiles = []
+              else removedFiles = (typeof removedFiles == 'string')? [JSON.parse(removedFiles)]:removedFiles.map(e=>JSON.parse(e))
+              let additionalFiles = [];
+              for(let file of req.files) additionalFiles.push({fileName:file.filename,originalName:file.originalname});
+              let bulk = collection.initializeOrderedBulkOp()
+              bulk.find({
+                assignments:{
+                  $elemMatch:{
+                    id:assignmentID,
+                    owner:uid
+                  }
+                }
+              }).update({
+                $set:{
+                  "assignments.$.content":content,
+                  "assignments.$.dueDate":dueDate,
+                  "assignments.$.title":title,
+                }
+              })
+              bulk.find({
+                assignments:{
+                  $elemMatch:{
+                    id:assignmentID,
+                    owner:uid
+                  }
+                }
+              }).update({
+                $pull:{
+                  "assignments.$.attachments":{$in:removedFiles}
+                }
+              })
+              bulk.find({
+                assignments:{
+                  $elemMatch:{
+                    id:assignmentID,
+                    owner:uid
+                  }
+                }
+              }).update({
+                $push:{
+                  "assignments.$.attachments":{$each:additionalFiles}
+                }
+              })
+              bulk.execute();
+              for(let removedFile of removedFiles) {
+                fs.unlink(path.resolve(__dirname,"../../resources/attachments/"+removedFile.fileName),(err) => {
+                  if(err) console.error(err)
+                })
+              }
+              res.send("successfully edited assignment");
+              connection.close()
+            }
+          }
+        })
+      } else {
+
+      }
+  }()).catch(handleInternalServerErrors(res,true));
+})
+router.post("/delete",loginRequired,allowRoles(["teacher"]),fields("id"),(req,res) => {
   (async function() {
       let connection = await MongoClient.connect(MONGO_URL);
       let {uid,type} = req.session;
@@ -232,10 +336,25 @@ router.post("/delete",allowRoles(["teacher"]),fields("id"),(req,res) => {
       }
     };
     queryObject[`members.${type}s`] = {$in:[uid]};
-    let result = await collection.updateOne(queryObject,{$pull:{"assignments":{id}}});
+    let result = await collection.findOneAndUpdate(queryObject,{$pull:{"assignments":{id}}},{returnOriginal:true,
+      projection:{
+      _id:0,
+      assignments:{
+        $elemMatch:{
+          id:id
+        }
+      }
+    }});
     // l(result);
-    if(result.result.n == 0) res.send("Unable to delete assignment")
-    else res.send("Successfully deleted assignment");
+    if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.send("Unable to delete assignment")
+    else {
+      res.send("Successfully deleted assignment");
+      for(let file of result.value.assignments[0].attachments) {
+        fs.unlink(path.resolve(__dirname,`../../resources/attachments/${file.fileName}`),(err) => {
+          if(err) console.error(err);
+        })
+      }
+    }
     connection.close()
   }()).catch(handleInternalServerErrors(res,true));
 })

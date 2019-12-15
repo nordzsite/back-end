@@ -27,7 +27,12 @@ const {MongoClient,ObjectID} = mongodb;
 const {fields} = require("./core/schema")
 const {handleInternalServerErrors} = lib.functions;
 const {loginRequired,loginRequired403} = lib.middleware;
-
+MongoClient.tempConnect = MongoClient.connect;
+MongoClient.doubleTempConnect = async function(){
+  console.log("Made connection==============================");
+  return await MongoClient.tempConnect.apply(MongoClient.tempConnect,arguments)
+}
+MongoClient.connect = MongoClient.doubleTempConnect
 // Constants
 const MONGO_CONFIG = {
   useNewUrlParser:true,
@@ -290,7 +295,7 @@ async function main(MONGO_STORE_CLIENT=null){
     l("Server (hopefully) running on "+PORT)
   })
 }
-
+global.MongoClient = MongoClient
 MongoClient.connect(MONGO_URL,MONGO_CONFIG,(err,client) => {
   let ERR_STRING = `
 =================================================
