@@ -228,6 +228,45 @@ async function main(MONGO_STORE_CLIENT=null){
       connection.close();
     }()).catch(handleInternalServerErrors(res,true));
   })
+  app.get("/assignment/:id",loginRequired,(req,res) => {
+    (async function() {
+        let connection = await MongoClient.connect(MONGO_URL);
+        let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+        let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+        let {uid,type} = req.session;
+        let {id} = req.params;
+        let queryObject = {"assignments.id":id};
+        queryObject[`members.${type}s`] = {$in:[uid]}
+        let result = await collection.findOne(queryObject,{projection:{assignments:1,name:1}});
+        if (result == null) {
+          res.status(404).sendFile(path.resolve(__dirname,"./public/front-end/public/private/404.html"));
+        } else {
+          let resultObject = {};
+          let className = result.name
+          for(let assignment of result.assignments){
+            if(assignment.id == id) {
+              resultObject = assignment;
+              delete resultObject.submissions
+              resultObject.initiator = resultObject.owner
+              let initiatorName = await userCollection.findOne({_id:new ObjectID(resultObject.initiator)});
+              resultObject.initiatorName = initiatorName.username
+              break
+            }
+          }
+          // res.json(resultObject)
+          let dueDate = new Date(Number(resultObject.dueDate))
+          res.rocketTemp("public/front-end/public/private/assignment.html",{
+            title:resultObject.title,
+            content:resultObject.content,
+            initiator:resultObject.initiator,
+            initiatorName:resultObject.initiatorName,
+            dueDate:`${dueDate.getMonthName()} ${dueDate.getDayName()}, ${dueDate.getFullYear()}`,
+            className:className
+          })
+        }
+        connection.close();
+    }());
+  })
   app.get("/class/:id",loginRequired,(req,res) => {
     (async function() {
       let classId = req.params.id;

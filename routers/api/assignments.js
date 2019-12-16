@@ -53,11 +53,36 @@ var multerUpload = multer({
         let queryObject = {_id:new ObjectID(classID)};
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
-          l("is this calling or not")
+          console.log(file)
           // l(classID)
           cb(null,false)
         } else {
-          l("is this calling true or not")
+          // l("is this calling true or not")
+          console.log("File failed F")
+          cb(null,true)
+        }
+        connection.close()
+    }());
+  }
+})
+var assignmentMulterUpload = multer({
+  storage:multerStorage,
+  fileFilter:function(req,file,cb){
+    // l(file);
+    (async function() {
+        let {uid,type} = req.session;
+        let {assignmentID} = req.body;
+        let connection = await MongoClient.connect(MONGO_URL);
+        let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+        let queryObject = {"assignments.id":assignmentID};
+        queryObject[`members.${type}s`] = {$in:[uid]}
+        if (await collection.countDocuments(queryObject) == 0) {
+          console.log(file)
+          // l(classID)
+          cb(null,false)
+        } else {
+          // l("is this calling true or not")
+          console.log("File worked")
           cb(null,true)
         }
         connection.close()
@@ -98,11 +123,93 @@ router.post("/get",fields('assignmentID'),(req,res) => {
     let finalResult = {};
     if (result == null) res.status(500).send("Could not find assignment")
     else {
-      for(let assignment of result.assignments) if(assignment.id == assignmentID) finalResult = assignment
+      for(let assignment of result.assignments) {
+        if(assignment.id == assignmentID) {
+          finalResult = assignment
+          if(type == 'student') {
+            assignment.isDue = true
+            for(let submission of assignment.submissions) {
+              if(submission.owner == uid) assignment.isDue = false
+            }
+          }
+        }
+      }
       res.json(finalResult)
     }
     connection.close();
   }()).catch(handleInternalServerErrors(res));
+})
+router.post("/submission/create",(req,res) => {
+  (async function() {
+    assignmentMulterUpload.single('additionalFile')(req,res,async function(err){
+      if (err) {
+        handleMulterErrors(res)
+      } else {
+        let connection = await MongoClient.connect(MONGO_URL);
+        let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+        let {uid,type} = req.session;
+        let {assignmentID} = req.body;
+        let queryObject = {"assignments.id":assignmentID};
+        queryObject[`members.${type}s`] = {$in:[uid]}
+        let file = req.file;
+        let date = new Date().getTime()
+        // res.send(req.file)
+        let result = await collection.findOneAndUpdate(queryObject,
+        {
+          $push:{"assignments.$.submissions":{
+            dateCreated:date,
+            lastModified:date,
+            id:lib.uniqueIdGen(),
+            fileName:file.filename,
+            owner:uid,
+            originalName:file.originalname
+          }}
+        })
+        if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.send("Unable to delete assignment")
+        else {
+          res.send("OK worked")
+        }
+        connection.close()
+      }
+    })
+  }());
+})
+router.post("/submission/edit",(req,res) => {
+  (async function() {
+    assignmentMulterUpload.single('additionalFile')(req,res,async function(err){
+      if (err) {
+        handleMulterErrors(res)
+      } else {
+        let connection = await MongoClient.connect(MONGO_URL);
+        let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+        let {uid,type} = req.session;
+        let {assignmentID} = req.body;
+        let queryObject = {"assignments.id":assignmentID};
+        queryObject[`members.${type}s`] = {$in:[uid]}
+        let file = req.file;
+        let date = new Date().getTime()
+        // res.send(req.file)
+        let result = await collection.findOneAndUpdate(queryObject,
+        {
+          $set:{
+            "assignments.$[a].submissions.$[s].lastModified":date,
+            "assignments.$[a].submissions.$[s].fileName":file.filename,
+            "assignments.$[a].submissions.$[s].originalName":file.originalname
+        }},{
+          // TODO PLEASE CHANGE PARAMETER TO SUB ID
+          arrayFilters:[
+            {"a.submissions.owner":uid},
+            {"s.owner":uid}
+          ]
+        })
+        if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.send("Unable to delete assignment")
+        else {
+          res.send("OK worked")
+        }
+        connection.close()
+      }
+    })
+  }());
 })
 router.post("/list",fields("classID"),(req,res) => {
   (async function() {
@@ -112,13 +219,15 @@ router.post("/list",fields("classID"),(req,res) => {
     let {uid,type} = req.session;
     let queryObject = {_id:new ObjectID(classID)};
     queryObject[`members.${type}s`] = {$in:[uid]};
-    let result = await collection.findOne(queryObject,{projection:{assignments:1}});
+    let result = await collection.findOne(queryObject,{projection:{assignments:1,name:1}});
+    let className = result.name;
     let finalResultArray = [];
     for(let assignment of result.assignments) {
       let assignmentObject = assignment;
       // console.log(assignment.submissions.some)
-      assignmentObject.status = (assignment.submissions.some(e => e.submitter==uid)) ? 'submitted' : 'due';
+      assignmentObject.status = (assignment.submissions.some(e => e.owner==uid)) ? 'submitted' : 'due';
       delete assignmentObject.submissions;
+      assignmentObject.className = className
       finalResultArray.push(assignmentObject)
     }
     res.json(finalResultArray)
@@ -158,7 +267,7 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
           handleMulterErrors(res,err)
         } else {
           console.log("In file upload section"+req.body.title)
-          if(req.body.dueDate == undefined || req.body.title == undefined || req.body.content == undefined || req.body.classID == undefined ) res.status(406).send("Invalid schema")
+          if(req.body.dueDate == undefined || req.body.title == undefined || req.body.content == undefined || req.body.classID == undefined ) res.status(406).send("Invalid schema 123")
           if(Date.now() > Number(req.body.dueDate)) res.status(406).send("Invalid due date")
           else {
           let {uid,type,user} = req.session;
@@ -202,12 +311,20 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
             // })
             res.send("Successfully created assignment, list of receipients to receive email = "+mailingList.join(', '));
             if(req.query.noNotif != "true"){
-              writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${uid}</b> posted an <b>assignment</b> to <b>${className}</b>`,assignmentID,content,uid)
+              let user = await userCollection.findOne({_id:new ObjectID(uid)})
+              user = user.username
+              console.log(user)
+              writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${user}</b> posted an <b>assignment</b> to <b>${className}</b>`,assignmentID,content,uid)
               .then((data) => {
-                console.log(data)
-              }).catch((err) => {
-                throw err
+                console.log(data.result)
+                connection.close()
+              }).catch((err) =>  {
+                throw err;
+                console.error(err)
+                connection.close()
               })
+            } else {
+              connection.close()
             }
           }
         }
@@ -249,6 +366,7 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
   }
 }()).catch(handleInternalServerErrors(res,true));
 })
+
 router.post("/edit",loginRequired,allowRoles(['teacher']),(req,res) => {
   (async function() {
       let connection = await MongoClient.connect(MONGO_URL);

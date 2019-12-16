@@ -145,7 +145,10 @@ router.post('/create',(req,res) => {
                 else res.send("Successfully posted to class")
               }
               if(type == 'teacher') {
-                writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${uid}</b> posted to <b>${className}</b>`,postID,content.substr(0,40)+"...",uid,"post")
+                let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
+                let user = await userCollection.findOne({_id:new ObjectID(uid)});
+                user = user.username
+                writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${username}</b> posted to <b>${className}</b>`,postID,content.substr(0,40)+"...",uid,"post")
                 .then((data) => {
                   console.log(data)
                   connection.close()
