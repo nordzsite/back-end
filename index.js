@@ -255,7 +255,8 @@ async function main(MONGO_STORE_CLIENT=null){
           }
           // res.json(resultObject)
           let dueDate = new Date(Number(resultObject.dueDate))
-          res.rocketTemp("public/front-end/public/private/assignment.html",{
+          let isTeacherBool = (type == 'teacher') ? 'teacher-' : ''
+          res.rocketTemp(`public/front-end/public/private/${isTeacherBool}assignment.html`,{
             title:resultObject.title,
             content:resultObject.content,
             initiator:resultObject.initiator,

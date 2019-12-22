@@ -53,12 +53,12 @@ var multerUpload = multer({
         let queryObject = {_id:new ObjectID(classID)};
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
-          console.log(file)
+          // console.log(file)
           // l(classID)
           cb(null,false)
         } else {
           // l("is this calling true or not")
-          console.log("File failed F")
+          // console.log("File failed F")
           cb(null,true)
         }
         connection.close()
@@ -71,10 +71,10 @@ var assignmentMulterUpload = multer({
     // l(file);
     (async function() {
         let {uid,type} = req.session;
-        let {assignmentID} = req.body;
+        let {submissionID} = req.body;
         let connection = await MongoClient.connect(MONGO_URL);
         let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
-        let queryObject = {"assignments.id":assignmentID};
+        let queryObject = {"assignments.submissions.id":submissionID};
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
           console.log(file)
@@ -82,7 +82,7 @@ var assignmentMulterUpload = multer({
           cb(null,false)
         } else {
           // l("is this calling true or not")
-          console.log("File worked")
+          // console.log("File worked")
           cb(null,true)
         }
         connection.close()
@@ -121,16 +121,23 @@ router.post("/get",fields('assignmentID'),(req,res) => {
     let result = await collection.findOne(queryObject,{
     })
     let finalResult = {};
-    if (result == null) res.status(500).send("Could not find assignment")
+    if (result == null) res.status(404).send("Could not find assignment")
     else {
       for(let assignment of result.assignments) {
         if(assignment.id == assignmentID) {
           finalResult = assignment
+          finalResult.submission = {}
           if(type == 'student') {
             assignment.isDue = true
-            for(let submission of assignment.submissions) {
-              if(submission.owner == uid) assignment.isDue = false
+            // console.log(assignment.submissions)
+             for(let submission of assignment.submissions) {
+              if(submission.owner == uid) {
+                finalResult.submission = submission
+                finalResult.isDue = false
+              }
             }
+            delete finalResult.submissions;
+            // console.log(assignment.submissions)
           }
         }
       }
@@ -149,14 +156,25 @@ router.post("/submission/create",(req,res) => {
         let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
         let {uid,type} = req.session;
         let {assignmentID} = req.body;
-        let queryObject = {"assignments.id":assignmentID};
+        // let queryObject = {"assignments":{$elemMatch:{
+          //   id:assignmentID
+          // }}};
+        /*
+
+         NOTE: IF USING POSITIONAL OPERATORS,
+         ONLY ONE QUERY CONDITION CAN BE USED,
+         ELSE USE ARRAY FILTERS
+
+         */
+        let queryObject = {"assignments":{$elemMatch:{
+          id:assignmentID
+        }}};
         queryObject[`members.${type}s`] = {$in:[uid]}
         let file = req.file;
         let date = new Date().getTime()
-        // res.send(req.file)
         let result = await collection.findOneAndUpdate(queryObject,
         {
-          $push:{"assignments.$.submissions":{
+          $push:{"assignments.$[a].submissions":{
             dateCreated:date,
             lastModified:date,
             id:lib.uniqueIdGen(),
@@ -164,15 +182,21 @@ router.post("/submission/create",(req,res) => {
             owner:uid,
             originalName:file.originalname
           }}
+        },{
+          arrayFilters:[
+            {"a.id":assignmentID}
+          ],
+          returnNewDocument:true
         })
         if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.send("Unable to delete assignment")
         else {
-          res.send("OK worked")
+          // console.log(result)
+          res.json(result.value)
         }
         connection.close()
       }
     })
-  }());
+  }()).catch(handleInternalServerErrors(res));
 })
 router.post("/submission/edit",(req,res) => {
   (async function() {
@@ -183,8 +207,9 @@ router.post("/submission/edit",(req,res) => {
         let connection = await MongoClient.connect(MONGO_URL);
         let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
         let {uid,type} = req.session;
-        let {assignmentID} = req.body;
-        let queryObject = {"assignments.id":assignmentID};
+        // let {assignmentID} = req.body;
+        let {submissionID} = req.body
+        let queryObject = {"assignments.submissions.id":submissionID};
         queryObject[`members.${type}s`] = {$in:[uid]}
         let file = req.file;
         let date = new Date().getTime()
@@ -196,20 +221,52 @@ router.post("/submission/edit",(req,res) => {
             "assignments.$[a].submissions.$[s].fileName":file.filename,
             "assignments.$[a].submissions.$[s].originalName":file.originalname
         }},{
-          // TODO PLEASE CHANGE PARAMETER TO SUB ID
+          // TODO: PLEASE CHANGE PARAMETER TO SUB ID
+          projection:{
+            assignments:{$elemMatch:
+              {
+                "submissions.id":submissionID
+              }
+            }
+          },
           arrayFilters:[
-            {"a.submissions.owner":uid},
+            {"a.submissions.id":submissionID},
             {"s.owner":uid}
-          ]
+          ],
+          returnNewDocument:false,
+          returnOriginal:true
         })
-        if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.send("Unable to delete assignment")
+        // console.log(result)
+        if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.status(500).send("Unable to delete assignment")
         else {
-          res.send("OK worked")
+          res.send("Successfully updated submission")
+          // console.log('FILE TRYING PLEASE')
+          // let finalResult = {}
+          let value = result.value;
+          // console.log(value)
+          for(let submission of value.assignments[0].submissions){
+            if(submission.id==submissionID) {
+              fs.unlink(path.resolve(__dirname,"../../resources/attachments/"+submission.fileName),(err) => {
+                if(err)console.log(err)
+              })
+            }
+          }
+          // for(let assignment of value.assignments){
+          //   if(assignment.id == assignmentID){
+          //     for(let submission of assignment.submissions){
+          //       if(submission.owner == uid) {
+          //         fs.unlink(path.resolve(__dirname,`../../resources/attachments/${submission.fileName}`),(err) => {
+          //           if(err) console.error(err)
+          //         })
+          //       }
+          //     }
+          //   }
+          // }}
         }
         connection.close()
       }
     })
-  }());
+  }()).catch(handleInternalServerErrors(res));
 })
 router.post("/list",fields("classID"),(req,res) => {
   (async function() {
@@ -241,7 +298,7 @@ router.get("/list/all",loginRequired,(req,res) => {
     let {uid,type} = req.session;
     let queryObject = {};
     queryObject[`members.${type}s`] = uid;
-    let cursor = await collection.find(queryObject,{projection:{assignments:1}});
+    let cursor = await collection.find(queryObject,{projection:{assignments:1,name:1}});
     let finalResultArray = []
     while(await cursor.hasNext()){
       let current = await cursor.next();
@@ -250,6 +307,7 @@ router.get("/list/all",loginRequired,(req,res) => {
         let assignmentObject = assignment;
         assignmentObject.status = (assignment.submissions.some(e=>e.submitter == uid)) ? 'submitted' : 'due';
         delete assignmentObject.submissions;
+        assignmentObject.className = current.name;
         finalResultArray.push(assignmentObject)
       }
     }
@@ -266,7 +324,7 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
         if (err) {
           handleMulterErrors(res,err)
         } else {
-          console.log("In file upload section"+req.body.title)
+          // console.log("In file upload section"+req.body.title)
           if(req.body.dueDate == undefined || req.body.title == undefined || req.body.content == undefined || req.body.classID == undefined ) res.status(406).send("Invalid schema 123")
           if(Date.now() > Number(req.body.dueDate)) res.status(406).send("Invalid due date")
           else {
@@ -280,6 +338,7 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
           assignmentID = lib.uniqueIdGen()
           let pushObject = {
             id:assignmentID,
+            locked:false,
             dueDate,
             content,
             title,
@@ -309,14 +368,15 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
             //     console.log("Successfully sent mail")
             //   }
             // })
-            res.send("Successfully created assignment, list of receipients to receive email = "+mailingList.join(', '));
+            if(req.query.returnAssignmentId == 'true') res.send("Successfully posted with id: "+assignmentID)
+            else res.send("Successfully created assignment");
             if(req.query.noNotif != "true"){
               let user = await userCollection.findOne({_id:new ObjectID(uid)})
               user = user.username
-              console.log(user)
+              // console.log(user)
               writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${user}</b> posted an <b>assignment</b> to <b>${className}</b>`,assignmentID,content,uid)
               .then((data) => {
-                console.log(data.result)
+                // console.log(data.result)
                 connection.close()
               }).catch((err) =>  {
                 throw err;
