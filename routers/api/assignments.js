@@ -48,19 +48,46 @@ var multerUpload = multer({
     (async function() {
         let {uid,type} = req.session;
         let {classID} = req.body;
+        console.log(req.body)
+        // console.log(`\n\n\n\n\n${classID}\n\n\n\n\n`)
         let connection = await MongoClient.connect(MONGO_URL);
         let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
         let queryObject = {_id:new ObjectID(classID)};
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
-          // console.log(file)
-          // l(classID)
+          console.log(file)
+          l(classID)
           cb(null,false)
         } else {
-          // l("is this calling true or not")
+          l("is this calling true or not")
           // console.log("File failed F")
           cb(null,true)
         }
+        connection.close()
+    }());
+  }
+})
+var assignmentCreateMulterUpload = multer({
+  storage:multerStorage,
+  fileFilter:function(req,file,cb){
+    // l(file);
+    (async function() {
+        let {uid,type} = req.session;
+        let {assignmentID} = req.body;
+        let connection = await MongoClient.connect(MONGO_URL);
+        let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+        let queryObject = {"assignments":{$elemMatch:{id:assignmentID,locked:false}}};
+        queryObject[`members.${type}s`] = {$in:[uid]}
+        if (await collection.countDocuments(queryObject) == 0) {
+          console.log("Invalid submission")
+          cb(null,false)
+        } else {
+          // l("is this calling true or not")
+          console.log("File worked")
+          console.log(file)
+          cb(null,true)
+        }
+        console.log(file)
         connection.close()
     }());
   }
@@ -77,14 +104,15 @@ var assignmentMulterUpload = multer({
         let queryObject = {"assignments.submissions.id":submissionID};
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
-          console.log(file)
-          // l(classID)
+          // console.log(file)
           cb(null,false)
         } else {
           // l("is this calling true or not")
           // console.log("File worked")
+          // console.log(file)
           cb(null,true)
         }
+        console.log(file)
         connection.close()
     }());
   }
@@ -113,6 +141,7 @@ router.post("/get",fields('assignmentID'),(req,res) => {
   (async function() {
     let connection = await MongoClient.connect(MONGO_URL);
     let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+    let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
     let {uid,type} = req.session;
     let {assignmentID} = req.body;
     l(assignmentID)
@@ -138,20 +167,87 @@ router.post("/get",fields('assignmentID'),(req,res) => {
             }
             delete finalResult.submissions;
             // console.log(assignment.submissions)
+          } else {
+            finalResult = assignment
+            for(let submission of finalResult.submissions) {
+              console.log(submission.owner)
+              let ownerOfSubmission = await userCollection.findOne({_id:new ObjectID(submission.owner)},{username:1});
+              console.log(ownerOfSubmission)
+              ownerOfSubmission = ownerOfSubmission.username;
+              submission.ownerName = ownerOfSubmission
+            }
           }
         }
       }
+      finalResult.classID = result._id
       res.json(finalResult)
     }
     connection.close();
   }()).catch(handleInternalServerErrors(res));
 })
-router.post("/submission/create",(req,res) => {
+router.post("/lock",loginRequired,allowRoles(['teacher']),fields('assignmentID'),(req,res) => {
   (async function() {
-    assignmentMulterUpload.single('additionalFile')(req,res,async function(err){
+      let connection = await MongoClient.connect(MONGO_URL);
+      let classCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+      let {user,type,uid} = req.session;
+      let {assignmentID} = req.body;
+      // let {<query params>} = req.query;
+
+      let queryObject = {}
+      queryObject[`members.${type}s`] = {$in:[uid]}
+      // Add any more conditions...
+      let updateObject = {$set:{
+        "assignments.$[a].locked":true
+      }}
+      let result = await classCollection.updateOne(queryObject,updateObject,
+      {
+        arrayFilters:[
+          {"a.id": assignmentID}
+        ]
+      })
+      if(result.result.n == 0) res.status(404).send("Unable to lock assignment")
+      else {
+      res.send('Sucessfully locked assignment')
+    }
+      connection.close()
+  }()).catch(handleInternalServerErrors(res));
+})
+router.post("/unlock",loginRequired,allowRoles(['teacher']),fields('assignmentID'),(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let classCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+      let {user,type,uid} = req.session;
+      let {assignmentID} = req.body;
+      // let {<query params>} = req.query;
+
+      let queryObject = {}
+      queryObject[`members.${type}s`] = {$in:[uid]}
+      // Add any more conditions...
+      let updateObject = {$set:{
+        "assignments.$[a].locked":false
+      }}
+      let result = await classCollection.updateOne(queryObject,updateObject,
+      {
+        arrayFilters:[
+          {"a.id": assignmentID}
+        ]
+      })
+      if(result.result.n == 0) res.status(404).send("Unable to unlock assignment")
+      else {
+      res.send('Sucessfully unlocked assignment')
+    }
+      connection.close()
+  }()).catch(handleInternalServerErrors(res));
+})
+
+router.post("/submission/create",loginRequired,allowRoles(['student']),(req,res) => {
+  (async function() {
+    assignmentCreateMulterUpload.single('additionalFile')(req,res,async function(err){
       if (err) {
         handleMulterErrors(res)
-      } else {
+      } else if (typeof req.file != 'undefined'){
         let connection = await MongoClient.connect(MONGO_URL);
         let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
         let {uid,type} = req.session;
@@ -167,7 +263,8 @@ router.post("/submission/create",(req,res) => {
 
          */
         let queryObject = {"assignments":{$elemMatch:{
-          id:assignmentID
+          id:assignmentID,
+          locked:false
         }}};
         queryObject[`members.${type}s`] = {$in:[uid]}
         let file = req.file;
@@ -188,15 +285,54 @@ router.post("/submission/create",(req,res) => {
           ],
           returnNewDocument:true
         })
-        if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.send("Unable to delete assignment")
+        if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.send("Unable to delete submission")
         else {
           // console.log(result)
           res.json(result.value)
         }
         connection.close()
       }
+       else {
+         res.send("Assignment is locked, you are no longer allowed to submit")
+       }
     })
   }()).catch(handleInternalServerErrors(res));
+})
+router.post("/submission/delete",fields("submissionID"),loginRequired,allowRoles(['student']),(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let classCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+      let {user,type,uid} = req.session;
+      let {submissionID} = req.body;
+      // let {<query params>} = req.query;
+      let queryObject = {"assignments.submissions":{$elemMatch:{
+        id:submissionID,
+        owner:uid
+      }}};
+      let updateObject = {$pull:{
+        "assignments.$.submissions":{
+          id:submissionID,
+          owner:uid
+        }
+      }}
+      // do work to updateObject
+      let result = await classCollection.findOneAndUpdate(queryObject,updateObject,{
+      returnOriginal:true, // for getting original Document
+      // returnNewDocument:true // for getting new document instead
+      projection:{
+        "assignments.$":1
+      }
+    })
+      if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.status(404).send("msg")
+      else {
+      // res.send("OK");
+      let value = result.value // Any traversion...
+      res.json(value)
+    }
+      connection.close()
+  }());
+
 })
 router.post("/submission/edit",(req,res) => {
   (async function() {
@@ -221,7 +357,6 @@ router.post("/submission/edit",(req,res) => {
             "assignments.$[a].submissions.$[s].fileName":file.filename,
             "assignments.$[a].submissions.$[s].originalName":file.originalname
         }},{
-          // TODO: PLEASE CHANGE PARAMETER TO SUB ID
           projection:{
             assignments:{$elemMatch:
               {
@@ -247,7 +382,7 @@ router.post("/submission/edit",(req,res) => {
           for(let submission of value.assignments[0].submissions){
             if(submission.id==submissionID) {
               fs.unlink(path.resolve(__dirname,"../../resources/attachments/"+submission.fileName),(err) => {
-                if(err)console.log(err)
+                if(err) console.log(err)
               })
             }
           }
@@ -391,6 +526,7 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
 
       }})
     } else {
+      console.log("IT is going to non file upload option")
     if(req.body.dueDate == undefined || req.body.title == undefined ||req.body.content == undefined ||req.body.classID == undefined ) res.status(406).send("Invalid schema")
     if(Date.now() > Number(req.body.dueDate)) res.status(406).send("Invalid due date")
     else {
@@ -426,7 +562,6 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
   }
 }()).catch(handleInternalServerErrors(res,true));
 })
-
 router.post("/edit",loginRequired,allowRoles(['teacher']),(req,res) => {
   (async function() {
       let connection = await MongoClient.connect(MONGO_URL);
@@ -496,30 +631,30 @@ router.post("/edit",loginRequired,allowRoles(['teacher']),(req,res) => {
           }
         })
       } else {
-
+        res.send("We're too lazy to make it without fileUpload sorry")
       }
   }()).catch(handleInternalServerErrors(res,true));
 })
-router.post("/delete",loginRequired,allowRoles(["teacher"]),fields("id"),(req,res) => {
+router.post("/delete",loginRequired,allowRoles(["teacher"]),fields("assignmentID"),(req,res) => {
   (async function() {
       let connection = await MongoClient.connect(MONGO_URL);
       let {uid,type} = req.session;
-      let {id} = req.body;
+      let {assignmentID} = req.body;
       let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
       let queryObject = {assignments:
         {
           $elemMatch:{
-            id
+            id:assignmentID
           }
       }
     };
     queryObject[`members.${type}s`] = {$in:[uid]};
-    let result = await collection.findOneAndUpdate(queryObject,{$pull:{"assignments":{id}}},{returnOriginal:true,
+    let result = await collection.findOneAndUpdate(queryObject,{$pull:{"assignments":{id:assignmentID}}},{returnOriginal:true,
       projection:{
       _id:0,
       assignments:{
         $elemMatch:{
-          id:id
+          id:assignmentID
         }
       }
     }});
@@ -547,3 +682,55 @@ router.post("/*",(req,res) => {
 })
 
 module.exports = router
+
+
+/*
+
+FORMAT FOR CONNECTION:
+
+(async function() {
+    let connection = await MongoClient.connect(MONGO_URL);
+    let classCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
+    let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+    let {user,type,uid} = req.session;
+    // let {<body params>} = req.body;
+    // let {<query params>} = req.query;
+
+    let queryObject = {}
+    queryObject[`members.${type}s`] = {$in:[uid]}
+    // Add any more conditions...
+    // for findOneAndUpdate:
+
+    let updateObject = {}
+  //   // do work to updateObject
+  //   let result = await classCollection.findOneAndUpdate(queryObject,updateObject,{
+  //   // returnOriginal:true, // for getting original Document
+  //   // returnNewDocument:true // for getting new document instead
+  //   projection:{}
+  // })
+  //   if(result.lastErrorObject.n == 0 || result.lastErrorObject.updatedExisting == false) res.status(404).send("msg")
+  //   else {
+  //   res.send("OK");
+  //   // let value = result.value // Any traversion...
+  // }
+    // for cursor Traversion:
+  //   let cursor = await classCollection.find(queryObject)
+  //   while(await cursor.hasNext()){
+  //     let current = cursor.next()
+  //     // Do stuff...
+  // }
+
+    // classic findOne
+  //   let result = await classCollection.findOne(queryObject);
+  //   // do stuff with result..
+
+  // classic updateOne
+  //   let result = await classCollection.updateOne(queryObject,updateObject)
+  //   if(result.result.n == 0) res.status(404).send("Unable to update document")
+  //   else {
+  //   res.send('okay')
+  // }
+    connection.close()
+}()).catch(handleInternalServerErrors(res));
+
+*/
