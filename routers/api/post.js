@@ -502,6 +502,7 @@ router.post("/comment/edit",fields("commentID","content"),(req,res) => {
     if(req.query.json == 'true') res.json({editedComment:comment,timeStamp:Date.now()})
     else res.send("Successfully posted comment")
   }
+  connection.close()
 }()).catch(handleInternalServerErrors(res));
 })
 router.post("/comment/delete",fields("commentID"),(req,res) => {
@@ -545,6 +546,7 @@ router.post("/comment/delete",fields("commentID"),(req,res) => {
       if(req.query.json == 'true')res.json({deletedComment:comment,timeStamp:Date.now()})
       else res.send("Successfully deleted comment")
     }
+    connection.close()
   }()).catch(handleInternalServerErrors(res));
 })
 router.get("/*",(req,res) => {

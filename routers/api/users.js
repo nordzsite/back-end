@@ -67,6 +67,9 @@ router.get("/:uid/getAllPosts",(req,res) => {
           if (post.poster == uid)
           {
             post.classID = current._id;
+            let ownerOfPost = await userCollection.findOne({_id:new ObjectID(post.poster)})
+            ownerOfPost = ownerOfPost.username
+            post.posterName = ownerOfPost
             post.className = current.name;
             for(let comment of post.comments){
               let userOfComment = await userCollection.findOne({_id:new ObjectID(comment.commenter)})

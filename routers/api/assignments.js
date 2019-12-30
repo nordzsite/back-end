@@ -48,14 +48,14 @@ var multerUpload = multer({
     (async function() {
         let {uid,type} = req.session;
         let {classID} = req.body;
-        console.log(req.body)
+        // console.log(req.body)
         // console.log(`\n\n\n\n\n${classID}\n\n\n\n\n`)
         let connection = await MongoClient.connect(MONGO_URL);
         let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
         let queryObject = {_id:new ObjectID(classID)};
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
-          console.log(file)
+          // console.log(file)
           l(classID)
           cb(null,false)
         } else {
@@ -79,15 +79,15 @@ var assignmentCreateMulterUpload = multer({
         let queryObject = {"assignments":{$elemMatch:{id:assignmentID,locked:false}}};
         queryObject[`members.${type}s`] = {$in:[uid]}
         if (await collection.countDocuments(queryObject) == 0) {
-          console.log("Invalid submission")
+          // console.log("Invalid submission")
           cb(null,false)
         } else {
           // l("is this calling true or not")
-          console.log("File worked")
-          console.log(file)
+          // console.log("File worked")
+          // console.log(file)
           cb(null,true)
         }
-        console.log(file)
+        // console.log(file)
         connection.close()
     }());
   }
@@ -112,7 +112,7 @@ var assignmentMulterUpload = multer({
           // console.log(file)
           cb(null,true)
         }
-        console.log(file)
+        // console.log(file)
         connection.close()
     }());
   }
@@ -170,9 +170,13 @@ router.post("/get",fields('assignmentID'),(req,res) => {
           } else {
             finalResult = assignment
             for(let submission of finalResult.submissions) {
-              console.log(submission.owner)
+              // console.log(submission.owner)
               let ownerOfSubmission = await userCollection.findOne({_id:new ObjectID(submission.owner)},{username:1});
-              console.log(ownerOfSubmission)
+              for(let feedback of submission.feedback){
+                let ownerOfFeedBack = await userCollection.findOne({_id:new ObjectID(feedback.owner)},{username:1})
+                feedback.ownerName = ownerOfFeedBack.username
+              }
+              // console.log(ownerOfSubmission)
               ownerOfSubmission = ownerOfSubmission.username;
               submission.ownerName = ownerOfSubmission
             }
@@ -252,6 +256,7 @@ router.post("/submission/create",loginRequired,allowRoles(['student']),(req,res)
         let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
         let {uid,type} = req.session;
         let {assignmentID} = req.body;
+        let content = req.body.content || "";
         // let queryObject = {"assignments":{$elemMatch:{
           //   id:assignmentID
           // }}};
@@ -266,7 +271,7 @@ router.post("/submission/create",loginRequired,allowRoles(['student']),(req,res)
           id:assignmentID,
           locked:false
         }}};
-        queryObject[`members.${type}s`] = {$in:[uid]}
+        queryObject[`members.${type}s`] = {$in:[uid]};
         let file = req.file;
         let date = new Date().getTime()
         let result = await collection.findOneAndUpdate(queryObject,
@@ -274,7 +279,9 @@ router.post("/submission/create",loginRequired,allowRoles(['student']),(req,res)
           $push:{"assignments.$[a].submissions":{
             dateCreated:date,
             lastModified:date,
+            feedback:[],
             id:lib.uniqueIdGen(),
+            content,
             fileName:file.filename,
             owner:uid,
             originalName:file.originalname
@@ -345,6 +352,7 @@ router.post("/submission/edit",(req,res) => {
         let {uid,type} = req.session;
         // let {assignmentID} = req.body;
         let {submissionID} = req.body
+        let content = req.body.content || ""
         let queryObject = {"assignments.submissions.id":submissionID};
         queryObject[`members.${type}s`] = {$in:[uid]}
         let file = req.file;
@@ -355,6 +363,7 @@ router.post("/submission/edit",(req,res) => {
           $set:{
             "assignments.$[a].submissions.$[s].lastModified":date,
             "assignments.$[a].submissions.$[s].fileName":file.filename,
+            "assignments.$[a].submissions.$[s].content":content,
             "assignments.$[a].submissions.$[s].originalName":file.originalname
         }},{
           projection:{
@@ -450,6 +459,112 @@ router.get("/list/all",loginRequired,(req,res) => {
     connection.close();
   }()).catch(handleInternalServerErrors(res));
 })
+router.post("/feedback/create",loginRequired,allowRoles(['teacher']),fields("submissionID","content"),(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let classCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+      let {user,type,uid} = req.session;
+      let {submissionID,content} = req.body;
+      let queryObject = {"assignments.submissions.id":submissionID};
+      queryObject[`members.${type}s`] = {$in:[uid]};
+      let feedbackId = lib.uniqueIdGen()
+      let dateCreated = new Date().getTime()
+      let updateObject = {
+        $push:{
+          "assignments.$[a].submissions.$[s].feedback":{
+            id:feedbackId,
+            owner:uid,
+            content,
+            dateCreated,
+            lastModified:dateCreated,
+          }
+        }
+      }
+      let result = await classCollection.updateOne(queryObject,updateObject,{
+        arrayFilters:[
+          {"a.submissions.id":submissionID},
+          {'s.id':submissionID}
+        ]
+      })
+      if(result.result.n == 0) res.status(404).send("Unable to give feedback")
+      else {
+      res.send('Successfully provided feedback')
+    }
+      connection.close()
+  }()).catch(handleInternalServerErrors(res));
+})
+router.post("/feedback/edit",loginRequired,allowRoles(['teacher']),fields("feedbackID","content"),(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let classCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+      let {user,type,uid} = req.session;
+      let {feedbackID,content} = req.body;
+      let queryObject = {"assignments.submissions.feedback":{
+          $elemMatch:{
+            id:feedbackID,
+            owner:uid
+          }
+        }
+      }
+      queryObject[`members.${type}s`] = {$in:[uid]}
+      let updateObject = {
+        $set:{
+          "assignments.$[a].submissions.$[s].feedback.$[f].content":content,
+          "assignments.$[a].submissions.$[s].feedback.$[f].lastModified":new Date().getTime()
+        }
+      }
+      let result = await classCollection.updateOne(queryObject,updateObject,{
+        arrayFilters:[
+          {"a.submissions.feedback.id":feedbackID},
+          {'s.feedback.id':feedbackID},
+          {'f.id':feedbackID}
+        ]
+      })
+      if(result.result.n == 0) res.status(404).send("Unable to edit feedback")
+      else {
+      res.send('Successfully edited feedback')
+    }
+      connection.close()
+  }()).catch(handleInternalServerErrors(res));
+})
+router.post("/feedback/clear",loginRequired,allowRoles(['teacher']),fields("feedbackID"),(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let classCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class)
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user)
+      let {user,type,uid} = req.session;
+      let {feedbackID} = req.body;
+      let queryObject = {"assignments.submissions.feedback":
+      {$elemMatch:{
+        id:feedbackID,
+        owner:uid
+      }}
+    }
+      queryObject[`members.${type}s`] = {$in:[uid]}
+      let updateObject = {
+        $pull:{
+          "assignments.$[a].submissions.$[s].feedback":{
+            id:feedbackID,
+            owner:uid
+          }
+        }
+      }
+      let result = await classCollection.updateOne(queryObject,updateObject,{
+        arrayFilters:[
+          {"a.submissions.feedback.id":feedbackID},
+          {'s.feedback.id':feedbackID}
+        ]
+      })
+      if(result.result.n == 0) res.status(404).send("Unable to clear feedback")
+      else {
+      res.send('Successfully cleared feedback')
+    }
+      connection.close()
+  }()).catch(handleInternalServerErrors(res));
+})
+
 router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
   (async function() {
     let connection = await MongoClient.connect(MONGO_URL);
@@ -503,7 +618,7 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
             //     console.log("Successfully sent mail")
             //   }
             // })
-            if(req.query.returnAssignmentId == 'true') res.send("Successfully posted with id: "+assignmentID)
+            if(req.query.json == 'true') res.json(pushObject)
             else res.send("Successfully created assignment");
             if(req.query.noNotif != "true"){
               let user = await userCollection.findOne({_id:new ObjectID(uid)})
@@ -526,7 +641,7 @@ router.post("/create",loginRequired,allowRoles(["teacher"]),(req,res) => {
 
       }})
     } else {
-      console.log("IT is going to non file upload option")
+      // console.log("IT is going to non file upload option")
     if(req.body.dueDate == undefined || req.body.title == undefined ||req.body.content == undefined ||req.body.classID == undefined ) res.status(406).send("Invalid schema")
     if(Date.now() > Number(req.body.dueDate)) res.status(406).send("Invalid due date")
     else {

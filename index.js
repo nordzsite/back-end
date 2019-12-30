@@ -150,6 +150,7 @@ async function main(MONGO_STORE_CLIENT=null){
 
   app.get("/class/:id/attachment/:attachmentID",(req,res) => {
     (async function() {
+
       let classId = req.params.id;
       let {attachmentID} = req.params
       let connection = await MongoClient.connect(MONGO_URL);
@@ -159,13 +160,17 @@ async function main(MONGO_STORE_CLIENT=null){
       let role = req.session.type;
       queryObject[`members.${role}s`] = {$in:[req.session.uid]}
       let result = await collection.countDocuments(queryObject);
+      console.log("countedDocuments".white.bold)
       if (result == 0) {
+        console.log("Invalid user".white.bold)
         res.status(403).sendFile(path.resolve(__dirname,"public/front-end/public/private/403.html"));
       } else {
         let finalFilePath = path.resolve(__dirname,"resources/attachments/"+attachmentID);
         if (!fs.existsSync(finalFilePath)) {
+          console.log("Invalid PATH".white.bold)
           res.status(404).sendFile(path.resolve(__dirname,"public/front-end/public/private/404.html"));
         } else {
+          console.log(finalFilePath.white.bold)
           res.sendFile(finalFilePath);
         }
       }
