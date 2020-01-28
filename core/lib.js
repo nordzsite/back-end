@@ -34,12 +34,20 @@ const Lib = {
   CONSTANTS:{
     emailValidationExpression:/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i
   },
+  findMissing:function findMissing(base,from){
+    let dict = {};
+    let array = [];
+    for(let value of base) dict[value] = null;
+    for(let value of Array.from(new Set(from)))if(value in dict) delete dict[value];
+    for(let value in dict) array.push(value);
+    return array;
+  },
   functions:{
     handleInternalServerErrors:function(res,showError=false){
       return (err) => {
         if(showError) res.status(500).send(err.toString());
         else res.status(500).send("Internal server error");
-        console.error(err)
+        console.error(err.stack.red.bold)
       }
     },
     handleMulterErrors:function(res,err){
@@ -60,6 +68,7 @@ const Lib = {
   bindLogging:function(boolean){
     return boolean ? console.log : function(){}
   },
+  sanitizeString:(s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"),
   middleware:{
     loginRequired:(req,res,next) => {
       if(typeof req.session.uid == 'undefined') res.status(403).json({message:"Need to be logged in to access resource",code:403})
@@ -74,6 +83,11 @@ const Lib = {
       return (req,res,next) => {
         if(!roles.includes(req.session.type)) res.status(403).send({message:`Only roles "${roles.join(",")}" allowed`,code:403});
         else next()
+      }
+    }, sanitizeFields:(...fields) => {
+      return (req,res,next) => {
+        for(let key in req.body) if(fields.includes(key)) req.body[key] = Lib.sanitizeString(req.body[key]);
+        next()
       }
     }
   },

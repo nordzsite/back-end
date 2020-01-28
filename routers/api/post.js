@@ -9,12 +9,15 @@ const data = require("../../keys/data.json");
 const keys = require("../../keys/keys.json");
 const fs = require("fs");
 const {MONGO_URL,STD_DB,STD_COLLECTION,ACCOUNT_TYPES,COLLECTIONS,MONGO_MAIN_DB} = data;
-const {allowRoles,loginRequired} = lib.middleware
+const {allowRoles,loginRequired,sanitizeFields} = lib.middleware
 const {handleInternalServerErrors,handleMulterErrors} = lib.functions
+const nodemailer = require("nodemailer")
 const {emailValidationExpression} = lib.CONSTANTS;
 const JSON_WEBTOKEN_KEY = keys.JSON_WEBTOKEN;
 const PromiseFunctions = require("../../core/PromiseFunctions/functions");
 const {writeToClassGroup,writeNotif} = PromiseFunctions.mongo
+const {composeTemplate} = PromiseFunctions.email
+const path = require('path')
 const multer = require("multer");
 const Schema = require("../../core/schema");
 const {fields} = Schema;
@@ -23,6 +26,14 @@ router.get("/",(req,res) => {
 })
 // l(lib.resPath("resources/attachments"));
 // l(process.cwd())
+let transporter = nodemailer.createTransport({
+  service:'Gmail',
+  auth:
+  {
+    user:'kabirdesarkar2016@gmail.com',
+    pass:"Minecraft!23"
+  }
+})
 let multerStorage = multer.diskStorage({
   destination:function(req,file,callBack){
     // let loc = lib.resPath("resources/attachments")
@@ -74,6 +85,7 @@ let editMulterUpload = multer({
     }())
   }
 })
+router.use(sanitizeFields("content"))
 router.post("/",(req,res) => {
   res.send("Welcome to post API post route")
 })
@@ -90,6 +102,7 @@ router.post('/create',(req,res) => {
           res.status(406).send("Invalid schema")
         } else {
           let {content,classID} = req.body;
+          content = lib.sanitizeString(content)
           let postObject = {
             id: lib.uniqueIdGen(),
             dateCreated: Date.now(),
@@ -112,9 +125,10 @@ router.post('/create',(req,res) => {
         multerUpload.array('additionalFiles')(req,res,async function(err){
           if(err) handleMulterErrors(res,err)
           else {
-            if(req.body.classID == undefined) res.status(406).send("classID required");
+            if(req.body.classID == undefined || req.body.content == undefined) res.status(406).send("Invalid schema");
             else {
               let {classID,content} = req.body
+              content = lib.sanitizeString(content)
               let queryObject = {_id:new ObjectID(classID)};
               let className = await collection.findOne({_id:new ObjectID(classID)})
               className = className.name
@@ -147,14 +161,30 @@ router.post('/create',(req,res) => {
               if(type == 'teacher') {
                 let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
                 let user = await userCollection.findOne({_id:new ObjectID(uid)});
-                user = user.username
-                writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${username}</b> posted to <b>${className}</b>`,postID,content.substr(0,40)+"...",uid,"post")
+                user = user.username;
+                let requiredClass = await collection.findOne(queryObject);
+                let mailingList = [];
+                for(let student of requiredClass.members.students) mailingList.push(student);
+                mailingList = mailingList.map(function(e){
+                  return {_id:new ObjectID(e)}
+                })
+                let requiredEmails = await userCollection.find({$or:mailingList},{projection:{email:1}}).toDocs()
+                requiredEmails = requiredEmails.map(e=>e.email);
+                // console.log(requiredEmails)
+                composeTemplate(transporter,`Teacher posted to class ${requiredClass.name}`,requiredEmails,path.resolve(__dirname,"../../public/front-end/public/private/email-inline.html"),{
+                  mainMessage:`${req.session.user} has made a new post to ${className}`,
+                  user:req.session.user,
+                  dateCreated:new Date().getSemiSimpleTime(),
+                  class:requiredClass.name,
+                  body:`${req.body.content}`
+                })
+                writeToClassGroup(connection,MONGO_MAIN_DB,COLLECTIONS.user,COLLECTIONS.class,classID,`<b>${user}</b> posted to <b>${className}</b>`,`/post/${postID}`,content.substr(0,40)+"...",uid,"post")
                 .then((data) => {
-                  console.log(data)
+                  // console.log(`\n\n\n\n\n\n${data}`.bold.white)
                   connection.close()
                 }).catch((err) => {
                   connection.close()
-                  console.error(err)
+                  console.error(err.brightRed.bold)
                 })
               } else {
                 connection.close()
@@ -208,6 +238,7 @@ router.post('/edit',(req,res) => {
           res.status(406).send("Invalid schema")
         } else {
           let {postID,content} = req.body;
+          content = lib.sanitizeString(content);
           let {uid} = req.session;
           let result = await collection.findOneAndUpdate({
             posts:{
@@ -250,6 +281,7 @@ router.post('/edit',(req,res) => {
             let {uid,type} =req.session;
             // l(req.body)
             let {postID,content,removedFiles} = req.body;
+            content = lib.sanitizeString(content);
             if (typeof removedFiles == 'undefined') {
               removedFiles = []
             } else {
@@ -335,7 +367,8 @@ router.post("/list",fields('classID'),(req,res) => {
       let result = await collection.findOne({_id:new ObjectID(classID)},{
         projection:
         {
-          posts:1
+          posts:1,
+          name:1
         }
       })
       // res.json(result)
@@ -344,6 +377,7 @@ router.post("/list",fields('classID'),(req,res) => {
       })
       for(let post of posts){
         let userOfPost = await userCollection.findOne({_id:new ObjectID(post.poster)});
+        post.className = result.name;
         userOfPost = userOfPost.username;
         post.posterName = userOfPost;
         for(let comment of post.comments){
@@ -429,6 +463,7 @@ router.post("/comment/create",fields('postID',{content:"5+"}),(req,res) => {
       let currentTime = Date.now();
       let connection = await MongoClient.connect(MONGO_URL);
       let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
+      let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
       let pushObject = {
         id:lib.uniqueIdGen(7),
         commenter:uid,
@@ -447,10 +482,38 @@ router.post("/comment/create",fields('postID',{content:"5+"}),(req,res) => {
         else res.send("Unable to add comment, either not part of class or invalid postID")
       } else {
         if(isJSON) res.json({timeStamp:currentTime,comment:pushObject})
-        else res.send("Successfully added comment")
+        else res.send("Successfully added comment");
+        result = await collection.findOne(queryObject,{
+        });
+        let requiredPostUser = "";
+        for(let post of result.posts) if(post.id==postID) requiredPostUser = post.poster;
+        if (requiredPostUser != req.session.uid) {
+          let userResult = await userCollection.findOne({_id:new ObjectID(requiredPostUser)},{email:1});
+          requiredEmail = userResult.email;
+          composeTemplate(transporter,`${req.session.user} has commented on one of your posts`,[requiredEmail],path.resolve(__dirname,"../../public/front-end/public/private/email-inline.html"),{
+            mainMessage:`${req.session.user} has commented on one of your posts`,
+            user:req.session.user,
+            dateCreated:new Date().getSemiSimpleTime(),
+            class:result.name,
+            body:`${req.body.content}`
+          });
+          content = req.body.content;
+          postID = req.body.postID;
+          let etcContent = (content.length > 50) ? "..." : ""
+          let notifContent = content.substr(0,50)+etcContent;
+          writeNotif(connection,MONGO_MAIN_DB,COLLECTIONS.user,requiredPostUser,`<b>${req.session.user}</b> has commented on one of your posts`,notifContent,`/post/${postID}`).then((e) => {
+            console.log(e.result);
+            connection.close()
+          }).catch((err) => {
+            console.error(err);
+            connection.close()
+          })
+        }
       }
       connection.close();
-  }()).catch(handleInternalServerErrors(res));
+  }()).catch((err) => {
+    console.error(err)
+  });
 })
 router.post("/comment/edit",fields("commentID","content"),(req,res) => {
   (async function() {

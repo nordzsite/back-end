@@ -5,6 +5,20 @@ const lib = require("../lib");
 const {MongoClient,ObjectID} = mongodb;
 const Lib = {
   mongo:{
+    mapUsers:async function mapUsers(connection,db,userCollection,uidList){
+      let finalDict = {};
+      let compressedList = Array.from(new Set(uidList));
+      compressedList = compressedList.map(function(e){return {_id:new ObjectID(e)}});
+      let collection = connection.db(db).collection(userCollection);
+      let cursor = await collection.find({$or:compressedList});
+      while(await cursor.hasNext()){
+        let current = await cursor.next();
+        let id = current._id.toString();
+        delete current._id;
+        finalDict[id] = current;
+      }
+      return finalDict
+    },
     getAllPostsByUserId:async function getAllPostsByUserId(MongoClient,url,db,classCollection,uid,role){
       let connection = await MongoClient.connect(url);
       let collection = connection.db(db).collection(classCollection);
@@ -21,14 +35,17 @@ const Lib = {
       return array
       connection.close();
     },
-    writeNotif:async function(MongoConnection,db,userCollection,userID,msg,type="post"){
+    writeNotif:async function(MongoConnection,db,userCollection,userID,msg,content,hook,type="post"){
       let collection = MongoConnection.db(db).collection(userCollection);
+      console.log("Notification: "+msg.brightGreen.bold+"\n\n\n\n\n")
       let pushObject = {
         notifications:{
           id:lib.uniqueIdGen(),
           timeStamp:Date.now(),
           type,
+          hook,
           message:msg,
+          content,
           status:"unread"
         }
       }
@@ -55,6 +72,38 @@ const Lib = {
         status:"unread"
       }}})
       return notificationResult
+    }
+  },
+  email:{
+    composeTemplate:function(transporter,subject,recipients,templatePath,templateObject,ifTextOnlyMessage="",organisationName="NordZSite"){
+      return new Promise((resolve,reject) => {
+        fs.readFile(templatePath,(err,docs) => {
+          if(err) {
+            reject(err)
+            console.error(err)
+          }
+          else {
+            let docString = String(docs.toString())
+            let finalString = lib.simpleApplyTemplate(docString,templateObject);
+            templateObject.body = templateObject.body || "This is supposed to be the body of the plain text message, please subscribe to html mailing service for quality mails"
+            transporter.sendMail({
+              from:'"Test acc 123" <kabirdesarkar2016@gmail.com>',
+              to: recipients,
+              subject:`[${organisationName}] ${subject}`,
+              html:finalString,
+              text:templateObject.body
+            },(err,info) => {
+              if (err) {
+                console.error(err);
+                reject(err)
+              } else {
+                resolve(info)
+                console.log("\n\n=======Successfully sent mail=======\n\n".brightBlue)
+              }
+            })
+          }
+        })
+      })
     }
   }
 }
@@ -89,6 +138,19 @@ if(process.argv.indexOf("--run-write-basic-notif") != -1) {
   }()).catch((err) => {
      console.error(err);
   });
+} else if(process.argv.indexOf("--map-users") != -1){
+  (async function() {
+      let connection = await MongoClient.connect("mongodb://localhost");
+      let data = await Lib.mongo.mapUsers(connection,"main","users",['5de523e719a3c498011bdaa4','5de5232019a3c498011bdaa3']);
+      connection.close();
+      let finalArray = []
+      for(let key in data) {
+        let object = data[key];
+        object['_id'] = key;
+        finalArray.push(object);
+      }
+      console.log(finalArray)
+  }());
 }
 
 // only for testing and practice inside iife

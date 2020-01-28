@@ -55,23 +55,23 @@ app.use(bodyParser.json())
 // app.use(upload.any())
 app.use("/docs/",require("./routers/docs"));
 async function main(MONGO_STORE_CLIENT=null){
-  if(MONGO_STORE_CLIENT!=null){
+  // if(MONGO_STORE_CLIENT!=null){
+    // app.use(session({
+    //   store:new MongoStore({
+    //     client:MONGO_STORE_CLIENT,
+    //     url:MONGO_URL+MONGO_MAIN_DB
+    //   }),
+    //   secret:KEYS.sessions,
+    //   resave: false,
+    //   saveUninitialized: false
+    // }))
+  // } else {
     app.use(session({
-      store:new MongoStore({
-        client:MONGO_STORE_CLIENT,
-        url:MONGO_URL+MONGO_MAIN_DB
-      }),
       secret:KEYS.sessions,
       resave: false,
       saveUninitialized: false
     }))
-  } else {
-    app.use(session({
-      secret:KEYS.sessions,
-      resave: false,
-      saveUninitialized: false
-    }))
-  }
+  // }
   app.use(bodyParser.text())
   lib.plugRouters(Routers,app,"/")
   lib.bindRoutersToDir("routers/api/",app,'/api/')
@@ -97,14 +97,13 @@ async function main(MONGO_STORE_CLIENT=null){
     res.status(404).file('public/front-end/public/private/404.html')
   })
 
-
   app.get("/profile",loginRequired403,(req,res) => {
     (async function() {
         let connection = await MongoClient.connect(MONGO_URL);
         let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
         let {uid} = req.session;
         let result = await collection.findOne({_id:new ObjectID(uid)});
-        console.log(result)
+        // console.log(result)
         res.rocketTemp("public/front-end/public/private/profile.html",{
           username:result.username,
           email:result.email
@@ -160,17 +159,17 @@ async function main(MONGO_STORE_CLIENT=null){
       let role = req.session.type;
       queryObject[`members.${role}s`] = {$in:[req.session.uid]}
       let result = await collection.countDocuments(queryObject);
-      console.log("countedDocuments".white.bold)
+      // console.log("countedDocuments".white.bold)
       if (result == 0) {
-        console.log("Invalid user".white.bold)
+        // console.log("Invalid user".white.bold)
         res.status(403).sendFile(path.resolve(__dirname,"public/front-end/public/private/403.html"));
       } else {
         let finalFilePath = path.resolve(__dirname,"resources/attachments/"+attachmentID);
         if (!fs.existsSync(finalFilePath)) {
-          console.log("Invalid PATH".white.bold)
+          // console.log("Invalid PATH".white.bold)
           res.status(404).sendFile(path.resolve(__dirname,"public/front-end/public/private/404.html"));
         } else {
-          console.log(finalFilePath.white.bold)
+          // console.log(finalFilePath.white.bold)
           res.sendFile(finalFilePath);
         }
       }
@@ -260,13 +259,14 @@ async function main(MONGO_STORE_CLIENT=null){
           }
           // res.json(resultObject)
           let dueDate = new Date(Number(resultObject.dueDate))
+          // console.log(resultObject)
           let isTeacherBool = (type == 'teacher') ? 'teacher-' : ''
           res.rocketTemp(`public/front-end/public/private/${isTeacherBool}assignment.html`,{
             title:resultObject.title,
             content:resultObject.content,
             initiator:resultObject.initiator,
             initiatorName:resultObject.initiatorName,
-            dueDate:`${dueDate.getMonthName()} ${dueDate.getDayName()}, ${dueDate.getFullYear()}`,
+            dueDate:dueDate.getSemiSimpleTime(),
             className:className
           })
         }
@@ -277,7 +277,7 @@ async function main(MONGO_STORE_CLIENT=null){
     (async function() {
       let classId = req.params.id;
       let connection = await MongoClient.connect(MONGO_URL);
-      console.log(connection);
+      // console.log(connection);
       let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.class);
       let userCollection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
       queryObject = {_id:new ObjectID(classId)};
@@ -315,7 +315,7 @@ async function main(MONGO_STORE_CLIENT=null){
 
     }());
   })
-  app.post("/dummy",(req,res) => {
+  app.post("/dummy",lib.middleware.sanitizeFields('content'),(req,res) => {
     res.send(req.body)
   })
   app.get("/*",(req,res) => {

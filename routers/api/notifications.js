@@ -33,7 +33,10 @@ router.post("/markRead",loginRequired,fields("id"),(req,res) => {
         }
       }},{$set:{"notifications.$.status":"read"}});
       if(result.result.n == 0) res.status(404).send("Unable to mark notification as read");
-      else res.send("Successfully marked as read");
+      else {
+        res.send("Successfully marked as read");
+        l("\n\n\n\n\n====Notification marked as read====\n\n\n\n\n\n".brightBlue.bold)
+      }
       let record = await collection.findOne({_id:new ObjectID(uid)},{
         projection:{notifications:1}
       })
@@ -78,6 +81,19 @@ router.get("/getAll",loginRequired,(req,res) => {
       let finalResultArray = [];
       for(let notification of result.notifications) finalResultArray.push(notification);
       res.json(finalResultArray);
+      connection.close();
+  }());
+})
+router.get("/clearAll",loginRequired,(req,res) => {
+  (async function() {
+      let connection = await MongoClient.connect(MONGO_URL);
+      let collection = connection.db(MONGO_MAIN_DB).collection(COLLECTIONS.user);
+      let {uid} = req.session;
+      let result = await collection.updateOne({_id:new ObjectID(uid)},{$set:{notifications:[]}});
+      if(result.result.n == 0) res.status(404).send("Unable to clear notifications");
+      else {
+        res.send("Cleared notifications")
+      }
       connection.close();
   }());
 })
